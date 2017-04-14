@@ -22,6 +22,9 @@ def conv2d(x, W, stride):
 def max_pool(x,pool_size, stride):
   return tf.nn.max_pool(x, ksize=[1, pool_size, pool_size, 1],strides=[1, stride, stride, 1], padding='SAME')
 
+def avg_pool(x,pool_size, stride):
+  return tf.nn.avg_pool(x, ksize=[1, pool_size, pool_size, 1],strides=[1, stride, stride, 1], padding='SAME')
+
 def conv_layer(x,filter_size,input_chl,output_chl,stride):
   W_conv = weight_variable([filter_size, filter_size, input_chl, output_chl])
   b_conv = bias_variable([output_chl])
@@ -47,6 +50,7 @@ inputs[0,:,:,:] = (img/255.0)*2.0 - 1.0
 
 
 x = tf.placeholder(tf.float32,[None,448,448,3])
+y_ = tf.placeholder(tf.float32,[None,1000])
 
 h_conv1 = conv_layer(x,7,3,64,2)
 h_pool1 = max_pool(h_conv1,2,2)
@@ -72,21 +76,18 @@ h_conv17 = conv_layer(h_pool16,1,1024,512,1)
 h_conv18 = conv_layer(h_conv17,3,512,1024,1)
 h_conv19 = conv_layer(h_conv18,1,1024,512,1)
 h_conv20 = conv_layer(h_conv19,3,512,1024,1)
-h_conv21 = conv_layer(h_conv20,3,1024,1024,1)
-h_conv22 = conv_layer(h_conv21,3,1024,1024,2)
-h_conv23 = conv_layer(h_conv22,3,1024,1024,1)
-h_conv24 = conv_layer(h_conv23,3,1024,1024,1)
-h_fc25 = fc_layer(h_conv24,7 * 7 * 1024,4096,flat=True)
-h_fc25 = tf.nn.dropout(h_fc25, 0.5)
-h_fc26 = fc_layer(h_fc25,4096,7*7*30,flat=False,linear=True)
-h_fc26 = tf.reshape(h_fc26,[7,7,30])
+h_pool20 = avg_pool(h_conv20,2,2)
+h_fc21 = fc_layer(h_pool20,7*7*1024,1000,flat=True,linear=True)
+
+cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(h_fc21, y_))
+train_step = tf.train.AdamOptimizer(1e-4).minimize(cross_entropy)
 
 
 sess = tf.Session()
 init = tf.global_variables_initializer()
 sess.run(init)
 
-sess.run([h_fc26],feed_dict={x:inputs})
+sess.run([h_fc21],feed_dict={x:inputs})
 
 
 
