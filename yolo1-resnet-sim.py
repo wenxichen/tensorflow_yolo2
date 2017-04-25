@@ -10,10 +10,10 @@ import cv2
 import xml.etree.ElementTree as ET
 
 from tensorflow.python.ops import control_flow_ops
-from datasets import dataset_factory
-from deployment import model_deploy
-from nets import nets_factory, resnet_v1, resnet_utils
-from preprocessing import preprocessing_factory
+from slim_dir.datasets import dataset_factory
+from slim_dir.deployment import model_deploy
+from slim_dir.nets import nets_factory, resnet_v1, resnet_utils
+from slim_dir.preprocessing import preprocessing_factory
 
 slim = tf.contrib.slim
 
@@ -36,13 +36,13 @@ def load_pascal_annotation():
     format.
     """
 
-    imname = '../testImg2.jpg'
+    imname = 'testImg2.jpg'
     im = cv2.imread(imname)
     h_ratio = 1.0 * IMAGE_SIZE / im.shape[0]
     w_ratio = 1.0 * IMAGE_SIZE / im.shape[1]
 
     label = np.zeros((S, S, 25))
-    filename = '../testImg2Anno.xml'
+    filename = 'testImg2Anno.xml'
     tree = ET.parse(filename)
     objs = tree.findall('object')
 
@@ -67,7 +67,7 @@ def load_pascal_annotation():
 
 # read in one image to test the flow of the network
 # PIXEL_MEANS = np.array([[[102.9801, 115.9465, 122.7717]]])
-im = cv2.imread('../testImg2.jpg')
+im = cv2.imread('testImg2.jpg')
 im = im.astype(np.float32, copy=False)
 im = (im / 255.0) * 2.0 - 1.0
 # im_shape = im.shape
