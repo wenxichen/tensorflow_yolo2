@@ -15,79 +15,30 @@ from slim_dir.deployment import model_deploy
 from slim_dir.nets import nets_factory, resnet_v1, resnet_utils
 from slim_dir.preprocessing import preprocessing_factory
 
+import config as cfg
+from img_dataset.pascal_voc import pascal_voc
+
 slim = tf.contrib.slim
 
-_CLASSES = ('aeroplane', 'bicycle', 'bird', 'boat',
-            'bottle', 'bus', 'car', 'cat', 'chair',
-            'cow', 'diningtable', 'dog', 'horse',
-            'motorbike', 'person', 'pottedplant',
-            'sheep', 'sofa', 'train', 'tvmonitor')
+
 NUM_CLASS = 20
-IMAGE_SIZE = 224
+IMAGE_SIZE = cfg.IMAGE_SIZE
 # TODO: may need to change 7 to S to add flexibility
-S = 7
-B = 2
+S = cfg.S
+B = cfg.B
 
-_class_to_ind = dict(list(zip(_CLASSES, list(range(NUM_CLASS)))))
-
-def load_pascal_annotation():
-    """
-    Load image and bounding boxes info from XML file in the PASCAL VOC
-    format.
-    """
-
-    imname = 'testImg2.jpg'
-    im = cv2.imread(imname)
-    h_ratio = 1.0 * IMAGE_SIZE / im.shape[0]
-    w_ratio = 1.0 * IMAGE_SIZE / im.shape[1]
-
-    label = np.zeros((S, S, 25))
-    filename = 'testImg2Anno.xml'
-    tree = ET.parse(filename)
-    objs = tree.findall('object')
-
-    for obj in objs:
-        bbox = obj.find('bndbox')
-        # Make pixel indexes 0-based
-        x1 = max(min((float(bbox.find('xmin').text) - 1) * w_ratio, IMAGE_SIZE - 1), 0)
-        y1 = max(min((float(bbox.find('ymin').text) - 1) * h_ratio, IMAGE_SIZE - 1), 0)
-        x2 = max(min((float(bbox.find('xmax').text) - 1) * w_ratio, IMAGE_SIZE - 1), 0)
-        y2 = max(min((float(bbox.find('ymax').text) - 1) * h_ratio, IMAGE_SIZE - 1), 0)
-        cls_ind = _class_to_ind[obj.find('name').text.lower().strip()]
-        boxes = [(x2 + x1) / 2.0, (y2 + y1) / 2.0, x2 - x1, y2 - y1]
-        x_ind = int(boxes[0] * S / IMAGE_SIZE)
-        y_ind = int(boxes[1] * S / IMAGE_SIZE)
-        if label[y_ind, x_ind, 0] == 1:
-            continue
-        label[y_ind, x_ind, 0] = 1
-        label[y_ind, x_ind, 1:5] = boxes
-        label[y_ind, x_ind, 5 + cls_ind] = 1
-
-    return label
-
-# read in one image to test the flow of the network
-# PIXEL_MEANS = np.array([[[102.9801, 115.9465, 122.7717]]])
-im = cv2.imread('testImg2.jpg')
-im = im.astype(np.float32, copy=False)
-im = (im / 255.0) * 2.0 - 1.0
-# im_shape = im.shape
-# im_size_min = np.min(im_shape[0:2])
-# im_size_max = np.max(im_shape[0:2])
-im = cv2.resize(im, (IMAGE_SIZE, IMAGE_SIZE))
-image = im.reshape([1, IMAGE_SIZE, IMAGE_SIZE, 3])
-label = load_pascal_annotation()
-label = label.reshape([1, S, S, 5+NUM_CLASS])
-
+# create database instance
+imdb = pascal_voc('trainval')
 
 # ALPHA = 0.1
 LAMBDA_COORD = 5
 LAMBDA_NOOBJ = 0.5
-BATCH_SIZE = 1
+BATCH_SIZE = cfg.BATCH_SIZE
 OFFSET = np.array(range(7) * 7 * B)
 OFFSET = np.reshape(OFFSET, (B, 7, 7))
 OFFSET = np.transpose(OFFSET, (1,2,0)) #[Y,X,B]
 
-x = tf.placeholder(tf.float32,[None, 224, 224, 3])
+input_data = tf.placeholder(tf.float32,[None, 224, 224, 3])
 labels = tf.placeholder(tf.float32, [None, 7, 7, 5 + NUM_CLASS])
 
 def resnet_v1_50(inputs,
@@ -256,7 +207,7 @@ def get_loss(net, labels, scope='loss_layer'):
 # get the right arg_scope in order to load weights
 with slim.arg_scope(resnet_v1.resnet_arg_scope()):
     # net is shape [batch_size, 7, 7, 2048] if input size is 244 x 244
-    net, end_points = resnet_v1_50(x)
+    net, end_points = resnet_v1_50(input_data)
 
 net = slim.flatten(net)
 
@@ -297,4 +248,6 @@ with tf.Session() as sess:
   
     saver.restore(sess, '/Users/wenxichen/Desktop/TensorFlow/ckpts/resnet_v1_50.ckpt')
 
-    loss_value = sess.run([loss], {x:image, labels:label})
+    image, gt_labels = imdb.get()
+
+    loss_value = sess.run([loss], {input_data:image, labels:gt_labels})
