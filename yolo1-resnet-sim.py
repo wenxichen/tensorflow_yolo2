@@ -6,30 +6,39 @@ from __future__ import print_function
 
 import tensorflow as tf
 import numpy as np
+import cv2
+import xml.etree.ElementTree as ET
 
 from tensorflow.python.ops import control_flow_ops
-from datasets import dataset_factory
-from deployment import model_deploy
-from nets import nets_factory, resnet_v1, resnet_utils
-from preprocessing import preprocessing_factory
+from slim_dir.datasets import dataset_factory
+from slim_dir.deployment import model_deploy
+from slim_dir.nets import nets_factory, resnet_v1, resnet_utils
+from slim_dir.preprocessing import preprocessing_factory
+
+import config as cfg
+from img_dataset.pascal_voc import pascal_voc
 
 slim = tf.contrib.slim
 
 
+NUM_CLASS = 20
+IMAGE_SIZE = cfg.IMAGE_SIZE
+# TODO: may need to change 7 to S to add flexibility
+S = cfg.S
+B = cfg.B
+
+# create database instance
+imdb = pascal_voc('trainval')
+
 # ALPHA = 0.1
 LAMBDA_COORD = 5
 LAMBDA_NOOBJ = 0.5
-NUM_CLASS = 20
-BATCH_SIZE = 16
-B = 2
-# TODO: may need to change 7 to S to add flexibility
-S = 7
+BATCH_SIZE = cfg.BATCH_SIZE
 OFFSET = np.array(range(7) * 7 * B)
 OFFSET = np.reshape(OFFSET, (B, 7, 7))
 OFFSET = np.transpose(OFFSET, (1,2,0)) #[Y,X,B]
-IMAGE_SIZE = 224.0
 
-x = tf.placeholder(tf.float32,[None, 224, 224, 3])
+input_data = tf.placeholder(tf.float32,[None, 224, 224, 3])
 labels = tf.placeholder(tf.float32, [None, 7, 7, 5 + NUM_CLASS])
 
 def resnet_v1_50(inputs,
@@ -134,7 +143,7 @@ def get_loss(net, labels, scope='loss_layer'):
         # TODO: need to make the ground truth labels last dimension [x, y, w, h]
         # with the same rule as predict_boxes
         gt_boxes = tf.reshape(labels[:, :, :, 1:5], [BATCH_SIZE, S, S, 1, 4])
-        gt_boxes = tf.tile(gt_boxes, [1, 1, 1, B, 1]) / IMAGE_SIZE
+        gt_boxes = tf.tile(gt_boxes, [1, 1, 1, B, 1]) / float(IMAGE_SIZE)
 
         # add offsets to the predicted box and ground truth box coordinates to get absolute coordinates between 0 and 1
         offset = tf.constant(OFFSET, dtype=tf.float32)
@@ -198,7 +207,7 @@ def get_loss(net, labels, scope='loss_layer'):
 # get the right arg_scope in order to load weights
 with slim.arg_scope(resnet_v1.resnet_arg_scope()):
     # net is shape [batch_size, 7, 7, 2048] if input size is 244 x 244
-    net, end_points = resnet_v1_50(x)
+    net, end_points = resnet_v1_50(input_data)
 
 net = slim.flatten(net)
 
@@ -238,3 +247,7 @@ with tf.Session() as sess:
     sess.run(init_op)
   
     saver.restore(sess, '/Users/wenxichen/Desktop/TensorFlow/ckpts/resnet_v1_50.ckpt')
+
+    image, gt_labels = imdb.get()
+
+    loss_value = sess.run([loss], {input_data:image, labels:gt_labels})
