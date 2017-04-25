@@ -50,6 +50,7 @@ x = tf.placeholder(tf.float32,[None,448,448,3])
 
 h_conv1 = conv_layer(x,7,3,64,2)
 h_pool1 = max_pool(h_conv1,2,2)
+print h_pool1.get_shape()
 h_conv2 = conv_layer(h_pool1,3,64,192,1)
 h_pool2 = max_pool(h_conv2,2,2)
 h_conv3 = conv_layer(h_pool2,1,192,128,1)
