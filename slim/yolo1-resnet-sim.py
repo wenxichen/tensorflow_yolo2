@@ -6,6 +6,8 @@ from __future__ import print_function
 
 import tensorflow as tf
 import numpy as np
+import cv2
+import xml.etree.ElementTree as ET
 
 from tensorflow.python.ops import control_flow_ops
 from datasets import dataset_factory
@@ -15,19 +17,75 @@ from preprocessing import preprocessing_factory
 
 slim = tf.contrib.slim
 
+_CLASSES = ('aeroplane', 'bicycle', 'bird', 'boat',
+            'bottle', 'bus', 'car', 'cat', 'chair',
+            'cow', 'diningtable', 'dog', 'horse',
+            'motorbike', 'person', 'pottedplant',
+            'sheep', 'sofa', 'train', 'tvmonitor')
+NUM_CLASS = 20
+IMAGE_SIZE = 224
+# TODO: may need to change 7 to S to add flexibility
+S = 7
+B = 2
+
+_class_to_ind = dict(list(zip(_CLASSES, list(range(NUM_CLASS)))))
+
+def load_pascal_annotation():
+    """
+    Load image and bounding boxes info from XML file in the PASCAL VOC
+    format.
+    """
+
+    imname = '../testImg2.jpg'
+    im = cv2.imread(imname)
+    h_ratio = 1.0 * IMAGE_SIZE / im.shape[0]
+    w_ratio = 1.0 * IMAGE_SIZE / im.shape[1]
+
+    label = np.zeros((S, S, 25))
+    filename = '../testImg2Anno.xml'
+    tree = ET.parse(filename)
+    objs = tree.findall('object')
+
+    for obj in objs:
+        bbox = obj.find('bndbox')
+        # Make pixel indexes 0-based
+        x1 = max(min((float(bbox.find('xmin').text) - 1) * w_ratio, IMAGE_SIZE - 1), 0)
+        y1 = max(min((float(bbox.find('ymin').text) - 1) * h_ratio, IMAGE_SIZE - 1), 0)
+        x2 = max(min((float(bbox.find('xmax').text) - 1) * w_ratio, IMAGE_SIZE - 1), 0)
+        y2 = max(min((float(bbox.find('ymax').text) - 1) * h_ratio, IMAGE_SIZE - 1), 0)
+        cls_ind = _class_to_ind[obj.find('name').text.lower().strip()]
+        boxes = [(x2 + x1) / 2.0, (y2 + y1) / 2.0, x2 - x1, y2 - y1]
+        x_ind = int(boxes[0] * S / IMAGE_SIZE)
+        y_ind = int(boxes[1] * S / IMAGE_SIZE)
+        if label[y_ind, x_ind, 0] == 1:
+            continue
+        label[y_ind, x_ind, 0] = 1
+        label[y_ind, x_ind, 1:5] = boxes
+        label[y_ind, x_ind, 5 + cls_ind] = 1
+
+    return label
+
+# read in one image to test the flow of the network
+# PIXEL_MEANS = np.array([[[102.9801, 115.9465, 122.7717]]])
+im = cv2.imread('../testImg2.jpg')
+im = im.astype(np.float32, copy=False)
+im = (im / 255.0) * 2.0 - 1.0
+# im_shape = im.shape
+# im_size_min = np.min(im_shape[0:2])
+# im_size_max = np.max(im_shape[0:2])
+im = cv2.resize(im, (IMAGE_SIZE, IMAGE_SIZE))
+image = im.reshape([1, IMAGE_SIZE, IMAGE_SIZE, 3])
+label = load_pascal_annotation()
+label = label.reshape([1, S, S, 5+NUM_CLASS])
+
 
 # ALPHA = 0.1
 LAMBDA_COORD = 5
 LAMBDA_NOOBJ = 0.5
-NUM_CLASS = 20
-BATCH_SIZE = 16
-B = 2
-# TODO: may need to change 7 to S to add flexibility
-S = 7
+BATCH_SIZE = 1
 OFFSET = np.array(range(7) * 7 * B)
 OFFSET = np.reshape(OFFSET, (B, 7, 7))
 OFFSET = np.transpose(OFFSET, (1,2,0)) #[Y,X,B]
-IMAGE_SIZE = 224.0
 
 x = tf.placeholder(tf.float32,[None, 224, 224, 3])
 labels = tf.placeholder(tf.float32, [None, 7, 7, 5 + NUM_CLASS])
@@ -134,7 +192,7 @@ def get_loss(net, labels, scope='loss_layer'):
         # TODO: need to make the ground truth labels last dimension [x, y, w, h]
         # with the same rule as predict_boxes
         gt_boxes = tf.reshape(labels[:, :, :, 1:5], [BATCH_SIZE, S, S, 1, 4])
-        gt_boxes = tf.tile(gt_boxes, [1, 1, 1, B, 1]) / IMAGE_SIZE
+        gt_boxes = tf.tile(gt_boxes, [1, 1, 1, B, 1]) / float(IMAGE_SIZE)
 
         # add offsets to the predicted box and ground truth box coordinates to get absolute coordinates between 0 and 1
         offset = tf.constant(OFFSET, dtype=tf.float32)
@@ -238,3 +296,5 @@ with tf.Session() as sess:
     sess.run(init_op)
   
     saver.restore(sess, '/Users/wenxichen/Desktop/TensorFlow/ckpts/resnet_v1_50.ckpt')
+
+    loss_value = sess.run([loss], {x:image, labels:label})
