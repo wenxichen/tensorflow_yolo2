@@ -1,6 +1,6 @@
 # README #
 
-## Instruction to run yolo-resnet-sim.py
+## Instruction to run yolo-resnet-sim
 * place resnet_v1_50.ckpt inside /weights folder
 
 ## Notes
