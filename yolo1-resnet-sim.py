@@ -24,7 +24,7 @@ from timer import Timer
 slim = tf.contrib.slim
 
 
-ADD_EPOCH = 12000
+ADD_EPOCH = 4000
 NUM_CLASS = 20
 IMAGE_SIZE = cfg.IMAGE_SIZE
 S = cfg.S
