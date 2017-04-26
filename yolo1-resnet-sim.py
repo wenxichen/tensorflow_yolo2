@@ -289,28 +289,33 @@ tf.summary.scalar('total_loss', loss)
 
 train_op = tf.train.AdamOptimizer().minimize(loss)
 
-with tf.Session() as sess:
+######################
+# Initialize Session #
+######################
+tfconfig = tf.ConfigProto(allow_soft_placement=True)
+tfconfig.gpu_options.allow_growth = True
+sess = tf.Session(config=tfconfig)
 
-    last_epoch_num = get_tf_variables(sess)
+last_epoch_num = get_tf_variables(sess)
 
-    cur_saver = tf.train.Saver()
+cur_saver = tf.train.Saver()
 
-    # generate summary on tensorboard
-    merged = tf.summary.merge_all()
-    tb_dir = cfg.get_output_tb_dir('resnet50', imdb.name)
-    train_writer = tf.summary.FileWriter(tb_dir, sess.graph)
+# generate summary on tensorboard
+merged = tf.summary.merge_all()
+tb_dir = cfg.get_output_tb_dir('resnet50', imdb.name)
+train_writer = tf.summary.FileWriter(tb_dir, sess.graph)
 
-    TOTAL_EPOCH = ADD_EPOCH + last_epoch_num
-    for i in range(last_epoch_num + 1, TOTAL_EPOCH + 1):
+TOTAL_EPOCH = ADD_EPOCH + last_epoch_num
+for i in range(last_epoch_num + 1, TOTAL_EPOCH + 1):
 
-        image, gt_labels = imdb.get()
+    image, gt_labels = imdb.get()
 
-        summary, loss_value, _ = sess.run([merged, loss, train_op], {input_data:image, labels:gt_labels})
-        if i>10:
-            train_writer.add_summary(summary, i)
+    summary, loss_value, _ = sess.run([merged, loss, train_op], {input_data:image, labels:gt_labels})
+    if i>10:
+        train_writer.add_summary(summary, i)
 
-        print('epoch {:d}/{:d}, total loss: {:.3}'.format(i, TOTAL_EPOCH, loss_value))
+    print('epoch {:d}/{:d}, total loss: {:.3}'.format(i, TOTAL_EPOCH, loss_value))
 
-    save_path = cur_saver.save(sess, os.path.join(CKPTS_DIR, cfg.TRAIN_SNAPSHOT_PREFIX + '_epoch_' + str(TOTAL_EPOCH) + '.ckpt.meta'))
-    print("Model saved in file: %s" % save_path)
+save_path = cur_saver.save(sess, os.path.join(CKPTS_DIR, cfg.TRAIN_SNAPSHOT_PREFIX + '_epoch_' + str(TOTAL_EPOCH) + '.ckpt'))
+print("Model saved in file: %s" % save_path)
 
