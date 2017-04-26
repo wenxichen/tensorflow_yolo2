@@ -24,7 +24,7 @@ from timer import Timer
 slim = tf.contrib.slim
 
 
-ADD_EPOCH = 20000
+ADD_EPOCH = 12000
 NUM_CLASS = 20
 IMAGE_SIZE = cfg.IMAGE_SIZE
 S = cfg.S
@@ -316,7 +316,7 @@ for i in range(last_epoch_num + 1, TOTAL_EPOCH + 1):
     summary, loss_value, _ = sess.run([merged, loss, train_op], {input_data:image, labels:gt_labels})
     if i>10:
         train_writer.add_summary(summary, i)
-    if i % 20 == 0:
+    if i % 10 == 0:
         _time = T.toc(average=False)
         print('epoch {:d}/{:d}, total loss: {:.3}, take {:.2}s'.format(i, TOTAL_EPOCH, loss_value, _time))
         T.tic()
