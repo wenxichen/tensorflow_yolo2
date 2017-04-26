@@ -9,6 +9,7 @@ import numpy as np
 import cv2
 import xml.etree.ElementTree as ET
 import os
+import glob
 
 from tensorflow.python.ops import control_flow_ops
 from slim_dir.datasets import dataset_factory
@@ -22,7 +23,7 @@ from img_dataset.pascal_voc import pascal_voc
 slim = tf.contrib.slim
 
 
-EPOCH = 20
+ADD_EPOCH = 20
 NUM_CLASS = 20
 IMAGE_SIZE = cfg.IMAGE_SIZE
 S = cfg.S
@@ -36,6 +37,7 @@ OFFSET = np.transpose(OFFSET, (1,2,0)) #[Y,X,B]
 
 # create database instance
 imdb = pascal_voc('trainval')
+CKPTS_DIR = cfg.get_ckpts_dir('resnet50', imdb.name)
 
 input_data = tf.placeholder(tf.float32,[None, 224, 224, 3])
 labels = tf.placeholder(tf.float32, [None, S, S, 5 + NUM_CLASS])
@@ -203,6 +205,69 @@ def get_loss(net, labels, scope='loss_layer'):
     return class_loss + object_loss + noobject_loss + coord_loss
 
 
+def get_tf_variables(sess, retrain=False):
+    """Get the tensorflow variables needed for the network.
+    Initialize variables or read from weights file if there is no checkpoint to restore,
+    otherise restore from the latest checkpoint.
+    """
+
+    # Find previous snapshots if there is any to restore from
+    sfiles = os.path.join(CKPTS_DIR, cfg.TRAIN_SNAPSHOT_PREFIX + '_epoch_*.ckpt.meta')
+    sfiles = glob.glob(sfiles)
+    sfiles.sort(key=os.path.getmtime)
+    # Get the snapshot name in TensorFlow
+    sfiles = [ss.replace('.meta', '') for ss in sfiles]
+
+    nfiles = os.path.join(CKPTS_DIR, cfg.TRAIN_SNAPSHOT_PREFIX + '_epoch_*.pkl')
+    nfiles = glob.glob(nfiles)
+    nfiles.sort(key=os.path.getmtime)
+
+    lsf = len(sfiles)
+    assert len(nfiles) == lsf
+
+    if lsf == 0:
+        #####################################################################
+        # initialize new variables and restore all the pretrained variables #
+        #####################################################################
+        # get all variable names
+        # variable_names = [n.name for n in tf.get_default_graph().as_graph_def().node]
+
+        # get tensor by name
+        # t = tf.get_default_graph().get_tensor_by_name("tensor_name")
+
+        # get variables by scope
+        # vars_in_scope = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='scope_name')
+
+        # op to initialized variables that does not have pretrained weights
+        adam_vars = [var for var in tf.global_variables() if 'Adam' in var.name or 'beta1_power' in var.name or 'beta2_power' in var.name]
+        uninit_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='yolo_fc1') \
+                    + tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='yolo_fc2') \
+                    + tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='loss_layer') \
+                    + adam_vars
+        init_op = tf.variables_initializer(uninit_vars)
+
+        # Restore only the convolutional layers:
+        variables_to_restore = slim.get_variables_to_restore(exclude=['yolo_fc1', 'yolo_fc2', 'loss_layer'])
+        for var in uninit_vars:
+            if var in variables_to_restore:
+                variables_to_restore.remove(var)
+        saver = tf.train.Saver(variables_to_restore)
+
+        print('Initializing new variables to train from downloaded resnet50 weights')
+        sess.run(init_op)
+        saver.restore(sess, os.path.join(cfg.WEIGHTS_PATH, 'resnet_v1_50.ckpt'))
+
+        return 0
+
+    else:
+        print('Restorining model snapshots from {:s}'.format(sfiles[-1]))
+        self.saver.restore(sess, str(sfiles[-1]))
+        print('Restored.')
+
+        fnames = sfiles[-1].split('_')
+        return int(fnames[-1][:-5])
+
+
 # get the right arg_scope in order to load weights
 with slim.arg_scope(resnet_v1.resnet_arg_scope()):
     # net is shape [batch_size, S, S, 2048] if input size is 244 x 244
@@ -224,48 +289,28 @@ tf.summary.scalar('total_loss', loss)
 
 train_op = tf.train.AdamOptimizer().minimize(loss)
 
-# get all variable names
-# variable_names = [n.name for n in tf.get_default_graph().as_graph_def().node]
-
-# get tensor by name
-# t = tf.get_default_graph().get_tensor_by_name("tensor_name")
-
-# get variables by scope
-# vars_in_scope = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='scope_name')
-
-# op to initialized variables that does not have pretrained weights
-adam_vars = [var for var in tf.global_variables() if 'Adam' in var.name or 'beta1_power' in var.name or 'beta2_power' in var.name]
-uninit_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='yolo_fc1') \
-              + tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='yolo_fc2') \
-              + tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='loss_layer') \
-              + adam_vars
-init_op = tf.variables_initializer(uninit_vars)
-merged = tf.summary.merge_all()
-
-########op restore all the pretrained variables###########
-# Restore only the convolutional layers:
-variables_to_restore = slim.get_variables_to_restore(exclude=['yolo_fc1', 'yolo_fc2', 'loss_layer'])
-for var in uninit_vars:
-    if var in variables_to_restore:
-        variables_to_restore.remove(var)
-saver = tf.train.Saver(variables_to_restore)
-
 with tf.Session() as sess:
 
-    tb_dir = cfg.get_output_tb_dir(imdb.name, 'resnet')
+    last_epoch_num = get_tf_variables(sess)
+
+    cur_saver = tf.train.Saver()
+
+    # generate summary on tensorboard
+    merged = tf.summary.merge_all()
+    tb_dir = cfg.get_output_tb_dir('resnet50', imdb.name)
     train_writer = tf.summary.FileWriter(tb_dir, sess.graph)
 
-    sess.run(init_op)
-    
-    saver.restore(sess, os.path.join(cfg.WEIGHTS_PATH, 'resnet_v1_50.ckpt'))
-
-    for i in range(EPOCH):
+    TOTAL_EPOCH = ADD_EPOCH + last_epoch_num
+    for i in range(last_epoch_num + 1, TOTAL_EPOCH + 1):
 
         image, gt_labels = imdb.get()
 
         summary, loss_value, _ = sess.run([merged, loss, train_op], {input_data:image, labels:gt_labels})
-        if i+1>10:
-            train_writer.add_summary(summary, i+1)
+        if i>10:
+            train_writer.add_summary(summary, i)
 
-        print('epoch {:d}/{:d}, total loss: {:.3}'.format(i+1, EPOCH, loss_value))
+        print('epoch {:d}/{:d}, total loss: {:.3}'.format(i, TOTAL_EPOCH, loss_value))
+
+    save_path = cur_saver.save(sess, os.path.join(CKPTS_DIR, cfg.TRAIN_SNAPSHOT_PREFIX + '_epoch_' + str(TOTAL_EPOCH) + '.ckpt.meta'))
+    print("Model saved in file: %s" % save_path)
 
