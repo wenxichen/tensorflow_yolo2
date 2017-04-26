@@ -223,7 +223,6 @@ def get_tf_variables(sess, retrain=False):
     nfiles.sort(key=os.path.getmtime)
 
     lsf = len(sfiles)
-    assert len(nfiles) == lsf
 
     if lsf == 0:
         #####################################################################
