@@ -3,3 +3,4 @@
 cache/*
 *.pyc
 tensorboard/*
+weights/*.ckpt
