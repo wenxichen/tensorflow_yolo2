@@ -19,11 +19,12 @@ from slim_dir.preprocessing import preprocessing_factory
 
 import config as cfg
 from img_dataset.pascal_voc import pascal_voc
+from timer import Timer
 
 slim = tf.contrib.slim
 
 
-ADD_EPOCH = 20
+ADD_EPOCH = 20000
 NUM_CLASS = 20
 IMAGE_SIZE = cfg.IMAGE_SIZE
 S = cfg.S
@@ -306,6 +307,8 @@ tb_dir = cfg.get_output_tb_dir('resnet50', imdb.name)
 train_writer = tf.summary.FileWriter(tb_dir, sess.graph)
 
 TOTAL_EPOCH = ADD_EPOCH + last_epoch_num
+T = Timer()
+T.tic()
 for i in range(last_epoch_num + 1, TOTAL_EPOCH + 1):
 
     image, gt_labels = imdb.get()
@@ -313,9 +316,13 @@ for i in range(last_epoch_num + 1, TOTAL_EPOCH + 1):
     summary, loss_value, _ = sess.run([merged, loss, train_op], {input_data:image, labels:gt_labels})
     if i>10:
         train_writer.add_summary(summary, i)
+    if i % 20 == 0:
+        _time = T.toc(average=False)
+        print('epoch {:d}/{:d}, total loss: {:.3}, take {:.2}s'.format(i, TOTAL_EPOCH, loss_value, _time))
+        T.tic()
 
-    print('epoch {:d}/{:d}, total loss: {:.3}'.format(i, TOTAL_EPOCH, loss_value))
+    if i % 2000 == 0:
+        save_path = cur_saver.save(sess, os.path.join(CKPTS_DIR, cfg.TRAIN_SNAPSHOT_PREFIX + '_epoch_' + str(TOTAL_EPOCH) + '.ckpt'))
 
-save_path = cur_saver.save(sess, os.path.join(CKPTS_DIR, cfg.TRAIN_SNAPSHOT_PREFIX + '_epoch_' + str(TOTAL_EPOCH) + '.ckpt'))
 print("Model saved in file: %s" % save_path)
 
