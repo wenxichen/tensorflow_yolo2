@@ -8,6 +8,7 @@ import tensorflow as tf
 import numpy as np
 import cv2
 import xml.etree.ElementTree as ET
+import os
 
 from tensorflow.python.ops import control_flow_ops
 from slim_dir.datasets import dataset_factory
@@ -21,7 +22,7 @@ from img_dataset.pascal_voc import pascal_voc
 slim = tf.contrib.slim
 
 
-EPOCH = 10
+EPOCH = 20
 NUM_CLASS = 20
 IMAGE_SIZE = cfg.IMAGE_SIZE
 S = cfg.S
@@ -219,6 +220,7 @@ fcnet = slim.fully_connected(net, S*S*(5*B+NUM_CLASS), scope='yolo_fc2')
 grid_net = tf.reshape(fcnet,[-1, S, S, (5*B+NUM_CLASS)])
 
 loss = get_loss(grid_net, labels)
+tf.summary.scalar('total_loss', loss)
 
 train_op = tf.train.AdamOptimizer().minimize(loss)
 
@@ -238,7 +240,7 @@ uninit_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='yolo_fc1')
               + tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='loss_layer') \
               + adam_vars
 init_op = tf.variables_initializer(uninit_vars)
-
+merged = tf.summary.merge_all()
 
 ########op restore all the pretrained variables###########
 # Restore only the convolutional layers:
@@ -249,15 +251,21 @@ for var in uninit_vars:
 saver = tf.train.Saver(variables_to_restore)
 
 with tf.Session() as sess:
+
+    tb_dir = cfg.get_output_tb_dir(imdb.name, 'resnet')
+    train_writer = tf.summary.FileWriter(tb_dir, sess.graph)
+
     sess.run(init_op)
-  
-    saver.restore(sess, '/Users/wenxichen/Desktop/TensorFlow/ckpts/resnet_v1_50.ckpt')
+    
+    saver.restore(sess, os.path.join(cfg.WEIGHTS_PATH, 'resnet_v1_50.ckpt'))
 
     for i in range(EPOCH):
 
         image, gt_labels = imdb.get()
 
-        loss_value, _ = sess.run([loss, train_op], {input_data:image, labels:gt_labels})
+        summary, loss_value, _ = sess.run([merged, loss, train_op], {input_data:image, labels:gt_labels})
+        if i+1>10:
+            train_writer.add_summary(summary, i+1)
 
         print('epoch {:d}/{:d}, total loss: {:.3}'.format(i+1, EPOCH, loss_value))
 

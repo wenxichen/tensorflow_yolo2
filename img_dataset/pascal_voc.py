@@ -30,7 +30,6 @@ class pascal_voc:
         self.flipped = cfg.FLIPPED
         self.image_set = image_set
         self.rebuild = rebuild
-        # TODO: may need to change cursor
         self.cursor = 0
         self.gt_labels = None
         assert os.path.exists(self.devkit_path), \

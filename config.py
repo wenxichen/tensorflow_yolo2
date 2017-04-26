@@ -1,8 +1,12 @@
-
+import os
 
 PASCAL_PATH = '/Users/wenxichen/Desktop/DL/tf-faster-rcnn/data/VOCdevkit'
 
-CACHE_PATH = '/Users/wenxichen/Desktop/DL/dl_yolo2/cache'
+ROOT_DIR = os.path.dirname(__file__)
+
+CACHE_PATH = os.path.join(ROOT_DIR,'cache')
+
+WEIGHTS_PATH = os.path.join(ROOT_DIR, 'weights')
 
 BATCH_SIZE = 16
 
@@ -12,6 +16,17 @@ S = 7
 
 B = 2
 
-FLIPPED = False
+FLIPPED = True
 
 
+def get_output_tb_dir(network_name, imdb_name):
+    """Return the directory where tensorflow summaries are placed.
+    If the directory does not exist, it is created.
+
+    A canonical path is built using the name from an imdb and a network
+    (if not None).
+    """
+    outdir = os.path.abspath(os.path.join(ROOT_DIR, 'tensorboard', network_name, imdb_name))
+    if not os.path.exists(outdir):
+      os.makedirs(outdir)
+    return outdir
