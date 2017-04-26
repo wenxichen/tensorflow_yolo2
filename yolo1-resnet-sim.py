@@ -260,7 +260,8 @@ def get_tf_variables(sess, retrain=False):
 
     else:
         print('Restorining model snapshots from {:s}'.format(sfiles[-1]))
-        self.saver.restore(sess, str(sfiles[-1]))
+        saver = tf.train.Saver()
+        saver.restore(sess, str(sfiles[-1]))
         print('Restored.')
 
         fnames = sfiles[-1].split('_')
