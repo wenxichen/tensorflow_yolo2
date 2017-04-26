@@ -21,25 +21,23 @@ from img_dataset.pascal_voc import pascal_voc
 slim = tf.contrib.slim
 
 
+EPOCH = 10
 NUM_CLASS = 20
 IMAGE_SIZE = cfg.IMAGE_SIZE
-# TODO: may need to change 7 to S to add flexibility
 S = cfg.S
 B = cfg.B
+LAMBDA_COORD = 5
+LAMBDA_NOOBJ = 0.5
+BATCH_SIZE = cfg.BATCH_SIZE
+OFFSET = np.array(range(S) * S * B)
+OFFSET = np.reshape(OFFSET, (B, S, S))
+OFFSET = np.transpose(OFFSET, (1,2,0)) #[Y,X,B]
 
 # create database instance
 imdb = pascal_voc('trainval')
 
-# ALPHA = 0.1
-LAMBDA_COORD = 5
-LAMBDA_NOOBJ = 0.5
-BATCH_SIZE = cfg.BATCH_SIZE
-OFFSET = np.array(range(7) * 7 * B)
-OFFSET = np.reshape(OFFSET, (B, 7, 7))
-OFFSET = np.transpose(OFFSET, (1,2,0)) #[Y,X,B]
-
 input_data = tf.placeholder(tf.float32,[None, 224, 224, 3])
-labels = tf.placeholder(tf.float32, [None, 7, 7, 5 + NUM_CLASS])
+labels = tf.placeholder(tf.float32, [None, S, S, 5 + NUM_CLASS])
 
 def resnet_v1_50(inputs,
                  num_classes=None,
@@ -109,10 +107,10 @@ def get_loss(net, labels, scope='loss_layer'):
     """Create loss from the last fc layer.
     
     Args:
-        net: the last fc layer reshaped to (BATCH_SIZE, 7, 7, 5B+NUM_CLASS).
-        lables: the ground truth of shape (BATCH_SIZE, 7, 7, 5+NUMCLASS) with the following content:
-                lables[:,:,:,0] : ground truth of responsibility of the predictor
-                lables[:,:,:,1:5] : ground truth bounding box coordinates
+        net: the last fc layer reshaped to (BATCH_SIZE, S, S, 5B+NUM_CLASS).
+        labels: the ground truth of shape (BATCH_SIZE, S, S, 5+NUMCLASS) with the following content:
+                labels[:,:,:,0] : ground truth of responsibility of the predictor
+                labels[:,:,:,1:5] : ground truth bounding box coordinates
                 labels[:,:,:,5:] : ground truth classes
 
     Return:
@@ -147,13 +145,13 @@ def get_loss(net, labels, scope='loss_layer'):
 
         # add offsets to the predicted box and ground truth box coordinates to get absolute coordinates between 0 and 1
         offset = tf.constant(OFFSET, dtype=tf.float32)
-        offset = tf.reshape(offset, [1, 7, 7, B])
+        offset = tf.reshape(offset, [1, S, S, B])
         offset = tf.tile(offset, [BATCH_SIZE, 1, 1, 1])
-        predict_xs = predict_boxes[:, :, :, :, 0] + (offset / 7.0)
-        gt_xs = gt_boxes[:, :, :, :, 0] + (offset / 7.0)
+        predict_xs = predict_boxes[:, :, :, :, 0] + (offset / float(S))
+        gt_xs = gt_boxes[:, :, :, :, 0] + (offset / float(S))
         offset = tf.transpose(offset, (0, 2, 1, 3))
-        predict_ys = predict_boxes[:, :, :, :, 1] + (offset / 7.0)
-        gt_ys = gt_boxes[:, :, :, :, 1] + (offset / 7.0)
+        predict_ys = predict_boxes[:, :, :, :, 1] + (offset / float(S))
+        gt_ys = gt_boxes[:, :, :, :, 1] + (offset / float(S))
         predict_ws = predict_boxes[:, :, :, :, 2]
         gt_ws = gt_boxes[:, :, :, :, 2]
         predict_hs = predict_boxes[:, :, :, :, 3]
@@ -206,7 +204,7 @@ def get_loss(net, labels, scope='loss_layer'):
 
 # get the right arg_scope in order to load weights
 with slim.arg_scope(resnet_v1.resnet_arg_scope()):
-    # net is shape [batch_size, 7, 7, 2048] if input size is 244 x 244
+    # net is shape [batch_size, S, S, 2048] if input size is 244 x 244
     net, end_points = resnet_v1_50(input_data)
 
 net = slim.flatten(net)
@@ -216,11 +214,13 @@ fcnet = slim.fully_connected(net, 4096, scope='yolo_fc1')
 fcnet = tf.nn.dropout(fcnet, 0.5)
 
 # in this case 7x7x30
-fcnet = slim.fully_connected(net, 7*7*(5*B+NUM_CLASS), scope='yolo_fc2')
+fcnet = slim.fully_connected(net, S*S*(5*B+NUM_CLASS), scope='yolo_fc2')
 
-grid_net = tf.reshape(fcnet,[-1,7,7,(5*B+NUM_CLASS)])
+grid_net = tf.reshape(fcnet,[-1, S, S, (5*B+NUM_CLASS)])
 
 loss = get_loss(grid_net, labels)
+
+train_op = tf.train.AdamOptimizer().minimize(loss)
 
 # get all variable names
 # variable_names = [n.name for n in tf.get_default_graph().as_graph_def().node]
@@ -232,15 +232,20 @@ loss = get_loss(grid_net, labels)
 # vars_in_scope = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='scope_name')
 
 # op to initialized variables that does not have pretrained weights
+adam_vars = [var for var in tf.global_variables() if 'Adam' in var.name or 'beta1_power' in var.name or 'beta2_power' in var.name]
 uninit_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='yolo_fc1') \
               + tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='yolo_fc2') \
-              + tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='loss_layer')
+              + tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='loss_layer') \
+              + adam_vars
 init_op = tf.variables_initializer(uninit_vars)
 
 
 ########op restore all the pretrained variables###########
 # Restore only the convolutional layers:
-variables_to_restore = slim.get_variables_to_restore(exclude=['yolo_fc1', 'yolo_fc2'])
+variables_to_restore = slim.get_variables_to_restore(exclude=['yolo_fc1', 'yolo_fc2', 'loss_layer'])
+for var in uninit_vars:
+    if var in variables_to_restore:
+        variables_to_restore.remove(var)
 saver = tf.train.Saver(variables_to_restore)
 
 with tf.Session() as sess:
@@ -248,6 +253,11 @@ with tf.Session() as sess:
   
     saver.restore(sess, '/Users/wenxichen/Desktop/TensorFlow/ckpts/resnet_v1_50.ckpt')
 
-    image, gt_labels = imdb.get()
+    for i in range(EPOCH):
 
-    loss_value = sess.run([loss], {input_data:image, labels:gt_labels})
+        image, gt_labels = imdb.get()
+
+        loss_value, _ = sess.run([loss, train_op], {input_data:image, labels:gt_labels})
+
+        print('epoch {:d}/{:d}, total loss: {:.3}'.format(i+1, EPOCH, loss_value))
+
