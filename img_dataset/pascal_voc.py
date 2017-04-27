@@ -65,6 +65,7 @@ class pascal_voc:
 
     def prepare(self):
         gt_labels = self.load_labels()
+        # TODO: consider adding flipped data into the saved cache's
         if self.flipped:
             print('Appending horizontally-flipped training examples ...')
             gt_labels_cp = copy.deepcopy(gt_labels)
@@ -73,11 +74,8 @@ class pascal_voc:
                 gt_labels_cp[idx]['label'] = gt_labels_cp[idx]['label'][:, ::-1, :]
                 for i in xrange(self.cell_size):
                     for j in xrange(self.cell_size):
-                        if gt_labels[idx]['label'][i, j, 0] == 1:
-                            # flipped image has relative coordinates in different cell most likely
-                            gt_labels_cp[idx]['label'] = np.zeros((self.cell_size, self.cell_size, 25))
-                            gt_labels_cp[idx]['label'][i, self.cell_size - j - 1] = gt_labels[idx]['label'][i, j]
-                            gt_labels_cp[idx]['label'][i, self.cell_size - j - 1, 1] = 1.0 / self.cell_size - gt_labels[idx]['label'][i, j, 1]
+                        if gt_labels_cp[idx]['label'][i, j, 0] == 1:
+                            gt_labels_cp[idx]['label'][i, j, 1] = self.image_size - 1 - gt_labels_cp[idx]['label'][i, j, 1]
             gt_labels += gt_labels_cp
         np.random.shuffle(gt_labels)
         self.gt_labels = gt_labels
@@ -125,8 +123,8 @@ class pascal_voc:
 
         imname = os.path.join(self.data_path, 'JPEGImages', index + '.jpg')
         im = cv2.imread(imname)
-        h_ratio = 1.0 / im.shape[0]
-        w_ratio = 1.0 / im.shape[1]
+        h_ratio = 1.0 * self.image_size / im.shape[0]
+        w_ratio = 1.0 * self.image_size / im.shape[1]
         # im = cv2.resize(im, [self.image_size, self.image_size])
 
         label = np.zeros((self.cell_size, self.cell_size, 25))
@@ -137,19 +135,16 @@ class pascal_voc:
         for obj in objs:
             bbox = obj.find('bndbox')
             # Make pixel indexes 0-based
-            x1 = max((float(bbox.find('xmin').text) - 1) * w_ratio, 0)
-            y1 = max((float(bbox.find('ymin').text) - 1) * h_ratio, 0)
-            x2 = max((float(bbox.find('xmax').text) - 1) * w_ratio, 0)
-            y2 = max((float(bbox.find('ymax').text) - 1) * h_ratio, 0)
+            x1 = max(min((float(bbox.find('xmin').text) - 1) * w_ratio, self.image_size - 1), 0)
+            y1 = max(min((float(bbox.find('ymin').text) - 1) * h_ratio, self.image_size - 1), 0)
+            x2 = max(min((float(bbox.find('xmax').text) - 1) * w_ratio, self.image_size - 1), 0)
+            y2 = max(min((float(bbox.find('ymax').text) - 1) * h_ratio, self.image_size - 1), 0)
             cls_ind = self.class_to_ind[obj.find('name').text.lower().strip()]
             boxes = [(x2 + x1) / 2.0, (y2 + y1) / 2.0, x2 - x1, y2 - y1]
-            x_ind = int(boxes[0] * self.cell_size)
-            y_ind = int(boxes[1] * self.cell_size)
+            x_ind = int(boxes[0] * self.cell_size / self.image_size)
+            y_ind = int(boxes[1] * self.cell_size / self.image_size)
             if label[y_ind, x_ind, 0] == 1:
                 continue
-            # substract the offset from the x and y to get (x,y) relative to the bounds of the grid cell
-            boxes[0] = boxes[0] - x_ind / float(self.cell_size)
-            boxes[1] = boxes[1] - y_ind / float(self.cell_size)
             label[y_ind, x_ind, 0] = 1
             label[y_ind, x_ind, 1:5] = boxes
             label[y_ind, x_ind, 5 + cls_ind] = 1
