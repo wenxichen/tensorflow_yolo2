@@ -24,7 +24,7 @@ from timer import Timer
 slim = tf.contrib.slim
 
 
-ADD_ITER = 1
+ADD_ITER = 10000
 NUM_CLASS = 20
 IMAGE_SIZE = cfg.IMAGE_SIZE
 S = cfg.S
@@ -314,8 +314,8 @@ for i in range(last_iter_num + 1, TOTAL_ITER + 1):
 
     summary, loss_value, _, ious_value, object_mask_value = \
         sess.run([merged, loss, train_op, ious, object_mask], {input_data:image, label_data:gt_labels})
-    if i>10:
-        train_writer.add_summary(summary, i)
+    # if i>10:
+    train_writer.add_summary(summary, i)
     if i % 10 == 0:
         _time = T.toc(average=False)
         print('iter {:d}/{:d}, total loss: {:.3}, take {:.2}s'.format(i, TOTAL_ITER, loss_value, _time))

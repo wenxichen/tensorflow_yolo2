@@ -17,7 +17,7 @@ CKPTS_PATH = os.path.join(ROOT_DIR, 'ckpts')
 
 TRAIN_SNAPSHOT_PREFIX = 'train'
 
-BATCH_SIZE = 1
+BATCH_SIZE = 64
 
 IMAGE_SIZE = 224
 
@@ -27,7 +27,7 @@ B = 2
 
 FLIPPED = True
 
-REBUILD = True
+REBUILD = False
 
 
 ###########################
