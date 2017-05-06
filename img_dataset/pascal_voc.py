@@ -30,9 +30,7 @@ class pascal_voc:
         self.flipped = cfg.FLIPPED
         self.image_set = image_set
         self.rebuild = rebuild
-        # TODO: may need to change cursor
         self.cursor = 0
-        self.epoch = 1
         self.gt_labels = None
         assert os.path.exists(self.devkit_path), \
             'VOCdevkit path does not exist: {}'.format(self.devkit_path)
@@ -54,7 +52,6 @@ class pascal_voc:
             if self.cursor >= len(self.gt_labels):
                 np.random.shuffle(self.gt_labels)
                 self.cursor = 0
-                self.epoch += 1
         return images, labels
 
     def image_read(self, imname, flipped=False):
@@ -68,6 +65,7 @@ class pascal_voc:
 
     def prepare(self):
         gt_labels = self.load_labels()
+        # TODO: consider adding flipped data into the saved cache's
         if self.flipped:
             print('Appending horizontally-flipped training examples ...')
             gt_labels_cp = copy.deepcopy(gt_labels)

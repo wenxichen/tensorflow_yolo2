@@ -1,3 +1,8 @@
 .DS_Store
 .idea
 cache/*
+*.pyc
+tensorboard/*
+weights/*.ckpt
+ckpts/*
+data/VOCdevkit
