@@ -146,19 +146,14 @@ def get_loss(net, labels, scope='loss_layer'):
         gt_boxes = tf.reshape(labels[:, :, :, 1:5], [BATCH_SIZE, S, S, 1, 4])
         gt_boxes = tf.tile(gt_boxes, [1, 1, 1, B, 1]) / float(IMAGE_SIZE)
 
-        # add offsets to the predicted box and ground truth box coordinates to get absolute coordinates between 0 and 1
+        # add offsets to the predicted box coordinates to get absolute coordinates between 0 and 1
         offset = tf.constant(OFFSET, dtype=tf.float32)
         offset = tf.reshape(offset, [1, S, S, B])
         offset = tf.tile(offset, [BATCH_SIZE, 1, 1, 1])
         predict_xs = (predict_boxes[:, :, :, :, 0] + offset) * IMAGE_SIZE / float(S)
-        gt_rel_xs = gt_boxes[:, :, :, :, 0] * S - offset
-        offset = tf.transpose(offset, (0, 2, 1, 3))
-        predict_ys = predict_boxes[:, :, :, :, 1] + offset * IMAGE_SIZE / float(S)
-        gt_rel_ys = gt_boxes[:, :, :, :, 1] * S - offset
+        predict_ys = predict_boxes[:, :, :, :, 1] + tf.transpose(offset, (0, 2, 1, 3)) * IMAGE_SIZE / float(S)
         predict_ws = predict_boxes[:, :, :, :, 2] * IMAGE_SIZE
-        gt_rel_ws = tf.sqrt(gt_boxes[:, :, :, :, 2])
         predict_hs = predict_boxes[:, :, :, :, 3] * IMAGE_SIZE
-        gt_rel_hs = tf.sqrt(gt_boxes[:, :, :, :, 3])
         predict_boxes_offset = tf.stack([predict_xs, predict_ys, predict_ws, predict_hs], axis=4)
         # gt_boxes_offset = tf.stack([gt_xs, gt_ys, gt_ws, gt_hs], axis=4)
         
@@ -170,6 +165,12 @@ def get_loss(net, labels, scope='loss_layer'):
         object_mask = tf.reduce_max(ious, 3, keep_dims=True)
         object_mask = tf.cast((ious >= object_mask), tf.float32) * responsible
         noobject_mask = tf.ones_like(object_mask, dtype=tf.float32) - object_mask
+
+        # add offsets to the ground truth box coordinates to get absolute coordinates between 0 and 1
+        gt_rel_xs = gt_boxes[:, :, :, :, 0] * S - offset
+        gt_rel_ys = gt_boxes[:, :, :, :, 1] * S - tf.transpose(offset, (0, 2, 1, 3))
+        gt_rel_ws = tf.sqrt(gt_boxes[:, :, :, :, 2])
+        gt_rel_hs = tf.sqrt(gt_boxes[:, :, :, :, 3])
 
         # coordinate loss
         coord_mask = tf.expand_dims(object_mask, 4)
