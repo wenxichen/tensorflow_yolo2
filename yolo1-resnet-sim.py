@@ -23,7 +23,7 @@ from timer import Timer
 
 slim = tf.contrib.slim
 
-
+# set hyper parameters
 ADD_ITER = 10000
 NUM_CLASS = 20
 IMAGE_SIZE = cfg.IMAGE_SIZE
@@ -151,14 +151,14 @@ def get_loss(net, labels, scope='loss_layer'):
         offset = tf.reshape(offset, [1, S, S, B])
         offset = tf.tile(offset, [BATCH_SIZE, 1, 1, 1])
         predict_xs = (predict_boxes[:, :, :, :, 0] + offset) * IMAGE_SIZE / float(S)
-        gt_rel_xs = gt_boxes[:, :, :, :, 0] * S / float(IMAGE_SIZE) - offset
+        gt_rel_xs = gt_boxes[:, :, :, :, 0] * S - offset
         offset = tf.transpose(offset, (0, 2, 1, 3))
         predict_ys = predict_boxes[:, :, :, :, 1] + offset * IMAGE_SIZE / float(S)
-        gt_rel_ys = gt_boxes[:, :, :, :, 1] * S / float(IMAGE_SIZE) - offset
+        gt_rel_ys = gt_boxes[:, :, :, :, 1] * S - offset
         predict_ws = predict_boxes[:, :, :, :, 2] * IMAGE_SIZE
-        gt_rel_ws = gt_boxes[:, :, :, :, 2] / float(IMAGE_SIZE)
+        gt_rel_ws = tf.sqrt(gt_boxes[:, :, :, :, 2])
         predict_hs = predict_boxes[:, :, :, :, 3] * IMAGE_SIZE
-        gt_rel_hs = gt_boxes[:, :, :, :, 3] /float(IMAGE_SIZE)
+        gt_rel_hs = tf.sqrt(gt_boxes[:, :, :, :, 3])
         predict_boxes_offset = tf.stack([predict_xs, predict_ys, predict_ws, predict_hs], axis=4)
         # gt_boxes_offset = tf.stack([gt_xs, gt_ys, gt_ws, gt_hs], axis=4)
         
