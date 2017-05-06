@@ -24,7 +24,7 @@ from timer import Timer
 slim = tf.contrib.slim
 
 # set hyper parameters
-ADD_ITER = 10000
+ADD_ITER = 2000
 NUM_CLASS = 20
 IMAGE_SIZE = cfg.IMAGE_SIZE
 S = cfg.S

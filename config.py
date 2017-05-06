@@ -25,9 +25,9 @@ S = 7
 
 B = 2
 
-FLIPPED = True
+FLIPPED = False
 
-REBUILD = False
+REBUILD = True
 
 
 ###########################
