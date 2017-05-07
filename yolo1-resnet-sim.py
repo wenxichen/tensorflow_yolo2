@@ -150,10 +150,10 @@ def get_loss(net, labels, scope='loss_layer'):
         offset = tf.constant(OFFSET, dtype=tf.float32)
         offset = tf.reshape(offset, [1, S, S, B])
         offset = tf.tile(offset, [BATCH_SIZE, 1, 1, 1])
-        predict_xs = (predict_boxes[:, :, :, :, 0] + offset) * IMAGE_SIZE / float(S)
-        predict_ys = predict_boxes[:, :, :, :, 1] + tf.transpose(offset, (0, 2, 1, 3)) * IMAGE_SIZE / float(S)
-        predict_ws = predict_boxes[:, :, :, :, 2] * IMAGE_SIZE
-        predict_hs = predict_boxes[:, :, :, :, 3] * IMAGE_SIZE
+        predict_xs = (predict_boxes[:, :, :, :, 0] + offset) / float(S)
+        predict_ys = (predict_boxes[:, :, :, :, 1] + tf.transpose(offset, (0, 2, 1, 3))) / float(S)
+        predict_ws = predict_boxes[:, :, :, :, 2]
+        predict_hs = predict_boxes[:, :, :, :, 3]
         predict_boxes_offset = tf.stack([predict_xs, predict_ys, predict_ws, predict_hs], axis=4)
         # gt_boxes_offset = tf.stack([gt_xs, gt_ys, gt_ws, gt_hs], axis=4)
         
