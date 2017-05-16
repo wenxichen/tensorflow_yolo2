@@ -21,7 +21,7 @@ from __future__ import print_function
 import tensorflow as tf
 
 # from tensorflow.python.ops import control_flow_ops
-# from slim_dir.datasets import dataset_factory
+from slim_dir.datasets import dataset_factory
 from slim_dir.deployment import model_deploy
 # from slim_dir.nets import nets_factory
 # from slim_dir.preprocessing import preprocessing_factory
@@ -237,6 +237,12 @@ deploy_config = model_deploy.DeploymentConfig(
     replica_id=FLAGS.task,
     num_replicas=FLAGS.worker_replicas,
     num_ps_tasks=FLAGS.num_ps_tasks)
+
+######################
+# Select the dataset #
+######################
+dataset = dataset_factory.get_dataset(
+    FLAGS.dataset_name, FLAGS.dataset_split_name, FLAGS.dataset_dir)
 
 
 ##############################################################
