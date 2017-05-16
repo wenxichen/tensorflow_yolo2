@@ -1,10 +1,5 @@
-import cv2
 import os
 import numpy as np
-from matplotlib import pyplot as plt
-from matplotlib import cm
-import argparse
-import sys
 import tensorflow as tf
 
 alpha = 0.1
