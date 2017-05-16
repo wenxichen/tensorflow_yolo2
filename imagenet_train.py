@@ -20,11 +20,11 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from tensorflow.python.ops import control_flow_ops
-from slim_dir.datasets import dataset_factory
+# from tensorflow.python.ops import control_flow_ops
+# from slim_dir.datasets import dataset_factory
 from slim_dir.deployment import model_deploy
-from slim_dir.nets import nets_factory
-from slim_dir.preprocessing import preprocessing_factory
+# from slim_dir.nets import nets_factory
+# from slim_dir.preprocessing import preprocessing_factory
 from darknet import darknet19
 
 slim = tf.contrib.slim
