@@ -289,13 +289,15 @@ loss = tf.losses.softmax_cross_entropy(
             logits=logits, onehot_labels=labels,
             label_smoothing=FLAGS.label_smoothing, weights=1.0)
 
-
+init_op = tf.global_variables_initializer()
 ######################
 # Initialize Session #
 ######################
 tfconfig = tf.ConfigProto(allow_soft_placement=True)
 tfconfig.gpu_options.allow_growth = True
 sess = tf.Session(config=tfconfig)
+
+sess.run(init_op)
 
 # last_iter_num = get_tf_variables(sess)
 last_iter_num = 0
