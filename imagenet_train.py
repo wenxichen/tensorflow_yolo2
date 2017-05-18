@@ -24,7 +24,7 @@ import tensorflow as tf
 from slim_dir.datasets import dataset_factory
 from slim_dir.deployment import model_deploy
 # from slim_dir.nets import nets_factory
-# from slim_dir.preprocessing import preprocessing_factory
+from slim_dir.preprocessing import preprocessing_factory
 from darknet import darknet19
 
 slim = tf.contrib.slim
@@ -238,11 +238,21 @@ deploy_config = model_deploy.DeploymentConfig(
     num_replicas=FLAGS.worker_replicas,
     num_ps_tasks=FLAGS.num_ps_tasks)
 
+
 ######################
 # Select the dataset #
 ######################
 dataset = dataset_factory.get_dataset(
     FLAGS.dataset_name, FLAGS.dataset_split_name, FLAGS.dataset_dir)
+
+
+#####################################
+# Select the preprocessing function #
+#####################################
+preprocessing_name = FLAGS.preprocessing_name
+image_preprocessing_fn = preprocessing_factory.get_preprocessing(
+    preprocessing_name,
+    is_training=True)
 
 
 ##############################################################
@@ -259,6 +269,7 @@ with tf.device(deploy_config.inputs_device()):
 
     train_image_size = FLAGS.train_image_size
 
+    # TODO: may need to change preprecessing
     image = image_preprocessing_fn(image, train_image_size, train_image_size)
 
     images, labels = tf.train.batch(
