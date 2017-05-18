@@ -7,4 +7,5 @@ python imagenet_train.py \
     --dataset_name=imagenet \
     --dataset_split_name=train \
     --dataset_dir=${DATASET_DIR} \
-    --train_image_size=224
+    --train_image_size=224 \
+    --preprocessing_name=vgg_preprocessing
