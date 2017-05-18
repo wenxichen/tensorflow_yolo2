@@ -313,9 +313,10 @@ TOTAL_ITER = ADD_ITER + last_iter_num
 T = Timer()
 T.tic()
 for i in range(last_iter_num + 1, TOTAL_ITER + 1):
-
+    print "here"
     summary, loss_value = \
         sess.run([merged, loss])
+    print "and here"
     # if i>10:
     train_writer.add_summary(summary, i)
     if i % 1 == 0:
