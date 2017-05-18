@@ -50,7 +50,7 @@ def darknet19(inputs,
     #                     outputs_collections=end_points_collection):
     #   with slim.arg_scope([], is_training=is_training):
 
-    h_conv1 = conv_layer(x,3,3,32,1)
+    h_conv1 = conv_layer(inputs,3,3,32,1)
     h_pool1 = max_pool(h_conv1,2,2)
 
     h_conv2 = conv_layer(h_pool1,3,32,64,1)
