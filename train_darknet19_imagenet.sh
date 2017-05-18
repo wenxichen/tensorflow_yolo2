@@ -6,4 +6,5 @@ python imagenet_train.py \
     --train_dir=${TRAIN_DIR} \
     --dataset_name=imagenet \
     --dataset_split_name=train \
-    --dataset_dir=${DATASET_DIR}
+    --dataset_dir=${DATASET_DIR} \
+    --train_image_size=224
