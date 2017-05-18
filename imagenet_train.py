@@ -30,6 +30,7 @@ from darknet import darknet19
 slim = tf.contrib.slim
 
 from utils.timer import Timer
+import config as cfg
 
 ADD_ITER  = 1000
 
