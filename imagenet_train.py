@@ -226,7 +226,7 @@ tf.app.flags.DEFINE_boolean(
 FLAGS = tf.app.flags.FLAGS
 
 
-print(tf.app.flags._FlagValues)
+print(tf.app.flags.FLAGS)
 
 #######################
 # Config model_deploy #

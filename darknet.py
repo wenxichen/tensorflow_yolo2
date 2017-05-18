@@ -80,9 +80,10 @@ def darknet19(inputs,
     h_conv18 = conv_layer(h_conv17,3,512,1024,1)
     
     # ======
-    h_conv19 = conv_layer(h_conv18,1,1024,1000,1)
+    # TODO: look into 1001
+    h_conv19 = conv_layer(h_conv18,1,1024,1001,1)
     h_avgpool = tf.layers.average_pooling2d(h_conv19, [7, 7], [7, 7])
-    logits = tf.reshape(h_avgpool, [-1, 1000])
+    logits = tf.reshape(h_avgpool, [-1, 1001])
     # loss = tf.nn.softmax(h_avgpool)
 
     # end_points = slim.utils.convert_collection_to_dict(end_points_collection)
