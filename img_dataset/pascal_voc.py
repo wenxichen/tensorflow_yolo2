@@ -8,39 +8,43 @@ import numpy as np
 import cv2
 import pickle
 import copy
+
 import config as cfg
 
 
 class pascal_voc:
     def __init__(self, image_set, rebuild=False):
         self.name = 'voc_2007'
-        self.devkit_path = cfg.PASCAL_PATH
-        self.data_path = os.path.join(self.devkit_path, 'VOC2007')
-        self.cache_path = cfg.CACHE_PATH
-        self.batch_size = cfg.BATCH_SIZE
-        self.image_size = cfg.IMAGE_SIZE
-        self.cell_size = cfg.S
-        self.classes = ('aeroplane', 'bicycle', 'bird', 'boat',
-                        'bottle', 'bus', 'car', 'cat', 'chair',
-                        'cow', 'diningtable', 'dog', 'horse',
-                        'motorbike', 'person', 'pottedplant',
-                        'sheep', 'sofa', 'train', 'tvmonitor')
-        self.num_class = len(self.classes)
-        self.class_to_ind = dict(list(zip(self.classes, list(range(self.num_class)))))
-        self.flipped = cfg.FLIPPED
-        self.image_set = image_set
-        self.rebuild = rebuild
-        self.cursor = 0
-        self.gt_labels = None
-        assert os.path.exists(self.devkit_path), \
-            'VOCdevkit path does not exist: {}'.format(self.devkit_path)
-        assert os.path.exists(self.data_path), \
-            'Path does not exist: {}'.format(self.data_path)
-        self.prepare()
+            self.devkit_path = cfg.PASCAL_PATH
+            self.data_path = os.path.join(self.devkit_path, 'VOC2007')
+            self.cache_path = cfg.CACHE_PATH
+            self.batch_size = cfg.BATCH_SIZE
+            self.image_size = cfg.IMAGE_SIZE
+            self.cell_size = cfg.S
+            self.classes = ('aeroplane', 'bicycle', 'bird', 'boat',
+                            'bottle', 'bus', 'car', 'cat', 'chair',
+                            'cow', 'diningtable', 'dog', 'horse',
+                            'motorbike', 'person', 'pottedplant',
+                            'sheep', 'sofa', 'train', 'tvmonitor')
+            self.num_class = len(self.classes)
+            self.class_to_ind = dict(
+                list(zip(self.classes, list(range(self.num_class)))))
+            self.flipped = cfg.FLIPPED
+            self.image_set = image_set
+            self.rebuild = rebuild
+            self.cursor = 0
+            self.gt_labels = None
+            assert os.path.exists(self.devkit_path), \
+                'VOCdevkit path does not exist: {}'.format(self.devkit_path)
+            assert os.path.exists(self.data_path), \
+                'Path does not exist: {}'.format(self.data_path)
+            self.prepare()
 
     def get(self):
-        images = np.zeros((self.batch_size, self.image_size, self.image_size, 3))
-        labels = np.zeros((self.batch_size, self.cell_size, self.cell_size, 25))
+        images = np.zeros(
+            (self.batch_size, self.image_size, self.image_size, 3))
+        labels = np.zeros(
+            (self.batch_size, self.cell_size, self.cell_size, 25))
         count = 0
         while count < self.batch_size:
             imname = self.gt_labels[self.cursor]['imname']
@@ -75,14 +79,16 @@ class pascal_voc:
                 for i in xrange(self.cell_size):
                     for j in xrange(self.cell_size):
                         if gt_labels_cp[idx]['label'][i, j, 0] == 1:
-                            gt_labels_cp[idx]['label'][i, j, 1] = self.image_size - 1 - gt_labels_cp[idx]['label'][i, j, 1]
+                            gt_labels_cp[idx]['label'][i, j, 1] = self.image_size - \
+                                1 - gt_labels_cp[idx]['label'][i, j, 1]
             gt_labels += gt_labels_cp
         np.random.shuffle(gt_labels)
         self.gt_labels = gt_labels
         return gt_labels
 
     def load_labels(self):
-        cache_file = os.path.join(self.cache_path, 'pascal_' + self.image_set + '_gt_labels.pkl')
+        cache_file = os.path.join(
+            self.cache_path, 'pascal_' + self.image_set + '_gt_labels.pkl')
 
         if os.path.isfile(cache_file) and not self.rebuild:
             print('Loading gt_labels from: ' + cache_file)
@@ -108,8 +114,10 @@ class pascal_voc:
             label, num = self.load_pascal_annotation(index)
             if num == 0:
                 continue
-            imname = os.path.join(self.data_path, 'JPEGImages', index + '.jpg')
-            gt_labels.append({'imname': imname, 'label': label, 'flipped': False})
+            imname = os.path.join(
+                self.data_path, 'JPEGImages', index + '.jpg')
+            gt_labels.append(
+                {'imname': imname, 'label': label, 'flipped': False})
         print('Saving gt_labels to: ' + cache_file)
         with open(cache_file, 'wb') as f:
             pickle.dump(gt_labels, f)
@@ -128,18 +136,24 @@ class pascal_voc:
         # im = cv2.resize(im, [self.image_size, self.image_size])
 
         label = np.zeros((self.cell_size, self.cell_size, 25))
-        filename = os.path.join(self.data_path, 'Annotations', index + '.xml')
+        filename = os.path.join(
+            self.data_path, 'Annotations', index + '.xml')
         tree = ET.parse(filename)
         objs = tree.findall('object')
 
         for obj in objs:
             bbox = obj.find('bndbox')
             # Make pixel indexes 0-based
-            x1 = max(min((float(bbox.find('xmin').text) - 1) * w_ratio, self.image_size - 1), 0)
-            y1 = max(min((float(bbox.find('ymin').text) - 1) * h_ratio, self.image_size - 1), 0)
-            x2 = max(min((float(bbox.find('xmax').text) - 1) * w_ratio, self.image_size - 1), 0)
-            y2 = max(min((float(bbox.find('ymax').text) - 1) * h_ratio, self.image_size - 1), 0)
-            cls_ind = self.class_to_ind[obj.find('name').text.lower().strip()]
+            x1 = max(min((float(bbox.find('xmin').text) - 1)
+                         * w_ratio, self.image_size - 1), 0)
+            y1 = max(min((float(bbox.find('ymin').text) - 1)
+                         * h_ratio, self.image_size - 1), 0)
+            x2 = max(min((float(bbox.find('xmax').text) - 1)
+                         * w_ratio, self.image_size - 1), 0)
+            y2 = max(min((float(bbox.find('ymax').text) - 1)
+                         * h_ratio, self.image_size - 1), 0)
+            cls_ind = self.class_to_ind[obj.find(
+                'name').text.lower().strip()]
             boxes = [(x2 + x1) / 2.0, (y2 + y1) / 2.0, x2 - x1, y2 - y1]
             x_ind = int(boxes[0] * self.cell_size / self.image_size)
             y_ind = int(boxes[1] * self.cell_size / self.image_size)
