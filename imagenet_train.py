@@ -309,20 +309,20 @@ merged = tf.summary.merge_all()
 tb_dir = cfg.get_output_tb_dir('darknet19', "imagenet")
 train_writer = tf.summary.FileWriter(tb_dir, sess.graph)
 
-TOTAL_ITER = ADD_ITER + last_iter_num
-T = Timer()
-T.tic()
-for i in range(last_iter_num + 1, TOTAL_ITER + 1):
-    print("here")
-    summary, loss_value = \
-        sess.run([merged, loss])
-    print("and here")
-    # if i>10:
-    train_writer.add_summary(summary, i)
-    if i % 1 == 0:
-        _time = T.toc(average=False)
-        print('iter {:d}/{:d}, total loss: {:.3}, take {:.2}s'.format(i, TOTAL_ITER, loss_value, _time))
-        T.tic()
+# TOTAL_ITER = ADD_ITER + last_iter_num
+# T = Timer()
+# T.tic()
+# for i in range(last_iter_num + 1, TOTAL_ITER + 1):
+#     print("here")
+#     summary, loss_value = \
+#         sess.run([merged, loss])
+#     print("and here")
+#     # if i>10:
+#     train_writer.add_summary(summary, i)
+#     if i % 1 == 0:
+#         _time = T.toc(average=False)
+#         print('iter {:d}/{:d}, total loss: {:.3}, take {:.2}s'.format(i, TOTAL_ITER, loss_value, _time))
+#         T.tic()
 
     # if i % 2000 == 0:
     #     save_path = cur_saver.save(sess, os.path.join(CKPTS_DIR, cfg.TRAIN_SNAPSHOT_PREFIX + '_iter_' + str(i) + '.ckpt'))
