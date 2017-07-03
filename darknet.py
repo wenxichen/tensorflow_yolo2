@@ -52,6 +52,16 @@ def darknet19(inputs,
               output_stride=None,
               reuse=None,
               scope='darknet19'):
+    """Darknet19 architecture built according to 
+    YOLO9000: Better, Faster, Stronger by J. Redmon and A. Farhadi.
+
+    Args:
+        inputs: 4D numpy array
+
+    Returns:
+        logits: 
+    """
+    # TODO: may need to change num_classes in the implementation to make the net more flexible
 
     with tf.variable_scope(scope, 'darknet19', [inputs], reuse=reuse) as sc:
         # end_points_collection = sc.name + '_end_points'

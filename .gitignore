@@ -6,3 +6,4 @@ tensorboard/*
 weights/*.ckpt
 ckpts/*
 data/VOCdevkit
+experiments*
