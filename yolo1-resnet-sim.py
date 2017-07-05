@@ -153,7 +153,8 @@ def get_loss(net, labels, scope='loss_layer'):
         gt_boxes = tf.reshape(labels[:, :, :, 1:5], [BATCH_SIZE, S, S, 1, 4])
         gt_boxes = tf.tile(gt_boxes, [1, 1, 1, B, 1]) / float(IMAGE_SIZE)
 
-        # add offsets to the predicted box coordinates to get absolute coordinates between 0 and 1
+        # add offsets to the predicted box coordinates 
+        # to get absolute coordinates between 0 and 1
         offset = tf.constant(OFFSET, dtype=tf.float32)
         offset = tf.reshape(offset, [1, S, S, B])
         offset = tf.tile(offset, [BATCH_SIZE, 1, 1, 1])
@@ -175,7 +176,8 @@ def get_loss(net, labels, scope='loss_layer'):
         noobject_mask = tf.ones_like(
             object_mask, dtype=tf.float32) - object_mask
 
-        # add offsets to the ground truth box coordinates to get absolute coordinates between 0 and 1
+        # add offsets to the ground truth box coordinates 
+        # to get absolute coordinates between 0 and 1
         gt_rel_xs = gt_boxes[:, :, :, :, 0] * S - offset
         gt_rel_ys = gt_boxes[:, :, :, :, 1] * \
             S - tf.transpose(offset, (0, 2, 1, 3))
@@ -272,8 +274,8 @@ for i in range(last_iter_num + 1, TOTAL_ITER + 1):
     train_writer.add_summary(summary, i)
     if i % 10 == 0:
         _time = T.toc(average=False)
-        print('iter {:d}/{:d}, total loss: {:.3}, take {:.2}s'.format(i,
-                                                                      TOTAL_ITER, loss_value, _time))
+        print('iter {:d}/{:d}, total loss: {:.3}, take {:.2}s'.
+              format(i, TOTAL_ITER, loss_value, _time))
         T.tic()
 
     if i % 2000 == 0:

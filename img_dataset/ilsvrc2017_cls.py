@@ -11,7 +11,7 @@ import config as cfg
 
 class ilsvrc_cls:
 
-    def __init__(self, image_set, rebuild=False):
+    def __init__(self, image_set, rebuild=False, data_aug=True):
         self.name = 'ilsvrc_2017'
         self.devkit_path = cfg.ILSVRC_PATH
         self.data_path = self.devkit_path
@@ -20,6 +20,7 @@ class ilsvrc_cls:
         self.image_size = cfg.IMAGE_SIZE
         self.image_set = image_set
         self.rebuild = rebuild
+        self.data_aug = data_aug
         self.cursor = 0
         self.load_classes()
         # self.gt_labels = None
@@ -78,7 +79,7 @@ class ilsvrc_cls:
         count = 0
         while count < self.batch_size:
             imname = self.gt_labels[self.cursor]['imname']
-            images[count, :, :, :] = self.image_read(imname, data_aug=True)
+            images[count, :, :, :] = self.image_read(imname, data_aug=self.data_aug)
             labels[count] = self.gt_labels[self.cursor]['label']
             count += 1
             self.cursor += 1
