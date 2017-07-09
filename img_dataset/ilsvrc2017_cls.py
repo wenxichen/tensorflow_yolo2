@@ -1,4 +1,6 @@
 """ILSVRC 2017 Classicifation Dataset.
+DEPRECATED version. For the purpose of keeping history only.
+Use ilsvrc2017_cls_multithread.py instead.
 """
 
 import os

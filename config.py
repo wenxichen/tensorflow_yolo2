@@ -23,13 +23,11 @@ IMAGE_SIZE = 224
 RAND_CROP_UPBOUND = 292
 
 S = 7
-
 B = 2
 
 FLIPPED = False
-
 REBUILD = False
-
+MULTITHREAD = True
 
 ###########################
 # Configuration Functions #
