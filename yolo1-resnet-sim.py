@@ -6,10 +6,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 import numpy as np
-import cv2
-import xml.etree.ElementTree as ET
 import os
-import glob
 
 from tensorflow.python.ops import control_flow_ops
 from slim_dir.datasets import dataset_factory

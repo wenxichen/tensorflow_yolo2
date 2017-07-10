@@ -34,6 +34,14 @@ def conv_layer(x, filter_size, input_chl, output_chl, stride):
     return tf.maximum(alpha * h_conv, h_conv)
 
 
+def conv_bn_layer(x, filter_size, input_chl, output_chl, stride, is_training):
+    h_conv_activated = conv_layer(
+        x, filter_size, input_chl, output_chl, stride)
+    return tf.layers.batch_normalization(h_conv_activated,
+                                         center=True, scale=True,
+                                         training=is_training)
+
+
 def fc_layer(x, input_dim, output_dim, flat=False, linear=False):
     W_fc = weight_variable([input_dim, output_dim])
     b_fc = bias_variable([output_dim])
@@ -69,37 +77,37 @@ def darknet19(inputs,
         #                     outputs_collections=end_points_collection):
         #   with slim.arg_scope([], is_training=is_training):
 
-        h_conv1 = conv_layer(inputs, 3, 3, 32, 1)
+        h_conv1 = conv_bn_layer(inputs, 3, 3, 32, 1, is_training)
         h_pool1 = max_pool(h_conv1, 2, 2)
 
-        h_conv2 = conv_layer(h_pool1, 3, 32, 64, 1)
+        h_conv2 = conv_bn_layer(h_pool1, 3, 32, 64, 1, is_training)
         h_pool2 = max_pool(h_conv2, 2, 2)
 
-        h_conv3 = conv_layer(h_pool2, 3, 64, 128, 1)
-        h_conv4 = conv_layer(h_conv3, 3, 128, 64, 1)
-        h_conv5 = conv_layer(h_conv4, 3, 64, 128, 1)
+        h_conv3 = conv_bn_layer(h_pool2, 3, 64, 128, 1, is_training)
+        h_conv4 = conv_bn_layer(h_conv3, 3, 128, 64, 1, is_training)
+        h_conv5 = conv_bn_layer(h_conv4, 3, 64, 128, 1, is_training)
         h_pool3 = max_pool(h_conv5, 2, 2)
 
-        h_conv6 = conv_layer(h_pool3, 3, 128, 256, 1)
-        h_conv7 = conv_layer(h_conv6, 1, 256, 128, 1)
-        h_conv8 = conv_layer(h_conv7, 3, 128, 256, 1)
+        h_conv6 = conv_bn_layer(h_pool3, 3, 128, 256, 1, is_training)
+        h_conv7 = conv_bn_layer(h_conv6, 1, 256, 128, 1, is_training)
+        h_conv8 = conv_bn_layer(h_conv7, 3, 128, 256, 1, is_training)
         h_pool4 = max_pool(h_conv8, 2, 2)
 
-        h_conv9 = conv_layer(h_pool4, 3, 256, 512, 1)
-        h_conv10 = conv_layer(h_conv9, 1, 512, 256, 1)
-        h_conv11 = conv_layer(h_conv10, 3, 256, 512, 1)
-        h_conv12 = conv_layer(h_conv11, 1, 512, 256, 1)
-        h_conv13 = conv_layer(h_conv12, 3, 256, 512, 1)
+        h_conv9 = conv_bn_layer(h_pool4, 3, 256, 512, 1, is_training)
+        h_conv10 = conv_bn_layer(h_conv9, 1, 512, 256, 1, is_training)
+        h_conv11 = conv_bn_layer(h_conv10, 3, 256, 512, 1, is_training)
+        h_conv12 = conv_bn_layer(h_conv11, 1, 512, 256, 1, is_training)
+        h_conv13 = conv_bn_layer(h_conv12, 3, 256, 512, 1, is_training)
         h_pool5 = max_pool(h_conv13, 2, 2)
 
-        h_conv14 = conv_layer(h_pool5, 3, 512, 1024, 1)
-        h_conv15 = conv_layer(h_conv14, 1, 1024, 512, 1)
-        h_conv16 = conv_layer(h_conv15, 3, 512, 1024, 1)
-        h_conv17 = conv_layer(h_conv16, 1, 1024, 512, 1)
-        h_conv18 = conv_layer(h_conv17, 3, 512, 1024, 1)
+        h_conv14 = conv_bn_layer(h_pool5, 3, 512, 1024, 1, is_training)
+        h_conv15 = conv_bn_layer(h_conv14, 1, 1024, 512, 1, is_training)
+        h_conv16 = conv_bn_layer(h_conv15, 3, 512, 1024, 1, is_training)
+        h_conv17 = conv_bn_layer(h_conv16, 1, 1024, 512, 1, is_training)
+        h_conv18 = conv_bn_layer(h_conv17, 3, 512, 1024, 1, is_training)
 
         # ======
-        h_conv19 = conv_layer(h_conv18, 1, 1024, 1000, 1)
+        h_conv19 = conv_bn_layer(h_conv18, 1, 1024, 1000, 1, is_training)
         h_avgpool = tf.layers.average_pooling2d(h_conv19, [7, 7], [7, 7])
         logits = tf.reshape(h_avgpool, [-1, 1000])
         # loss = tf.nn.softmax(h_avgpool)

@@ -4,7 +4,6 @@
 import os
 import cv2
 import math
-import time
 import numpy as np
 import random
 import pickle
@@ -32,8 +31,8 @@ class ilsvrc_cls:
         self.cursor = 0
         self.epoch = 1
         # TODO: not hard code totoal number of images
-        # self.total_batch = int(math.ceil(1281167 / float(self.batch_size)))
-        self.total_batch = 70
+        self.total_batch = int(math.ceil(1281167 / float(self.batch_size)))
+        # self.total_batch = 70
         self.gt_labels = None
         assert os.path.exists(self.devkit_path), \
             'ILSVRC path does not exist: {}'.format(self.devkit_path)
@@ -111,6 +110,7 @@ class ilsvrc_cls:
             if self.cursor >= len(self.gt_labels):
                 random.shuffle(self.gt_labels)
                 self.cursor = 0
+                self.epoch += 1
         return images, labels
 
     def prepare_multithread(self):
@@ -119,7 +119,7 @@ class ilsvrc_cls:
         self.reset = False
         # num_batch_left should always be -1 until the last batch block of the epoch
         self.num_batch_left = -1
-        self.num_child = 4
+        self.num_child = 10
         self.child_processes = [None] * self.num_child
         self.batch_cursor_read = 0
         self.batch_cursor_fetched = 0
@@ -169,7 +169,7 @@ class ilsvrc_cls:
             if self.total_batch <= self.batch_cursor_fetched + batch_block:
                 self.reset = True
                 self.num_batch_left = self.total_batch - self.batch_cursor_fetched
-        print "batch_cursor_fetched:", self.batch_cursor_fetched
+        # print "batch_cursor_fetched:", self.batch_cursor_fetched
 
     def start_prefetch_list(self, L):
         """Start multiple multiprocessing prefetches."""
@@ -222,22 +222,22 @@ class ilsvrc_cls:
             labels: 1D numpy array
         """
 
-        print "num_batch_left:", self.num_batch_left
+        # print "num_batch_left:", self.num_batch_left
 
         if self.reset:
             print "one epoch is about to finish! reseting..."
             self.collect_prefetch_list(
                 range(self.num_child / 2, self.num_child))
-            print "#####passed here 1"
+            # print "#####passed here 1"
             self.reset = False
 
         elif self.num_batch_left == -1:
             # run the child process
             batch_block = self.prefetch_size * self.num_child
             checker = (self.batch_cursor_read % batch_block) - 4
-            print "checker:", checker
+            # print "checker:", checker
             if checker % 5 == 0:
-                print "about to start prefetch", checker / 5
+                # print "about to start prefetch", checker / 5
                 self.start_prefetch(int(checker / 5))
                 if checker / 5 == self.num_child / 2 - 1:
                     self.collect_prefetch_list(
@@ -252,7 +252,7 @@ class ilsvrc_cls:
                        % (self.prefetch_size * self.num_child)) \
             * self.batch_size
         self.batch_cursor_read += 1
-        print "batch_cursor_read:", self.batch_cursor_read
+        # print "batch_cursor_read:", self.batch_cursor_read
 
         if self.num_batch_left == self.total_batch - self.batch_cursor_read:
             # fetch and receive the last few batches of the epoch
@@ -260,7 +260,7 @@ class ilsvrc_cls:
                                     float(self.prefetch_size))))
             self.start_prefetch_list(L)
             self.collect_prefetch_list(L)
-            print "#####passed here 2"
+            # print "#####passed here 2"
 
         # reset after one epoch
         if self.batch_cursor_read == self.total_batch:

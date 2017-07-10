@@ -25,6 +25,10 @@ from __future__ import print_function
 import os
 import tensorflow as tf
 
+import sys
+ROOT_DIR = os.path.dirname(__file__)
+sys.path.append(ROOT_DIR+'/../')
+
 from datasets import dataset_utils
 
 slim = tf.contrib.slim

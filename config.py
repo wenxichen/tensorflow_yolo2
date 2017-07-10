@@ -7,6 +7,7 @@ ROOT_DIR = os.path.dirname(__file__)
 
 PASCAL_PATH = os.path.join(ROOT_DIR, 'data', 'VOCdevkit')
 ILSVRC_PATH = os.path.join(ROOT_DIR, 'data', 'ILSVRC')
+FLOWERS_PATH = os.path.join(ROOT_DIR, 'data', 'TF_flowers')
 
 CACHE_PATH = os.path.join(ROOT_DIR, 'cache')
 
@@ -17,7 +18,7 @@ CKPTS_PATH = os.path.join(ROOT_DIR, 'ckpts')
 
 TRAIN_SNAPSHOT_PREFIX = 'train'
 
-BATCH_SIZE = 64
+BATCH_SIZE = 32
 
 IMAGE_SIZE = 224
 RAND_CROP_UPBOUND = 292
