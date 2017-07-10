@@ -7,7 +7,7 @@ import tensorflow as tf
 
 import config as cfg
 from img_dataset.ilsvrc2017_cls_multithread import ilsvrc_cls
-from darknet import darknet19
+from yolo2_nets.darknet import darknet19
 from utils.timer import Timer
 
 

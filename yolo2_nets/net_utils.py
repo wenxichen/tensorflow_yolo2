@@ -2,14 +2,35 @@ import os
 import glob
 import config
 import tensorflow as tf
+import config as cfg
 
 slim = tf.contrib.slim
 
 
+def get_ordered_ckpts(sess, imdb, net_name):
+    """Get the ckpts for particular network on certain dataset.
+    The ckpts is ordered in ascending order of time.
+    
+    Returns: sorted list of ckpt names.
+    """
+
+    # Find previous snapshots if there is any to restore from
+    ckpts_dir = cfg.get_ckpts_dir(net_name, imdb.name)
+    sfiles = os.path.join(ckpts_dir, cfg.TRAIN_SNAPSHOT_PREFIX + '_iter_*.ckpt.meta')
+    sfiles = glob.glob(sfiles)
+    sfiles.sort(key=os.path.getmtime)
+    # Get the snapshot name in TensorFlow
+    sfiles = [ss.replace('.meta', '') for ss in sfiles]
+
+    return sfiles
+
+    # TODO: double check what this is doing
+    # nfiles = os.path.join(ckpts_dir, cfg.TRAIN_SNAPSHOT_PREFIX + '_iter_*.pkl')
+    # nfiles = glob.glob(nfiles)
+    # nfiles.sort(key=os.path.getmtime)
 
 
-
-def get_resnet_tf_variables(sess, net_name, retrain=False):
+def get_resnet_tf_variables(sess, imdb, net_name, retrain=False):
     """Get the tensorflow variables needed for the network.
     Initialize variables or read from weights file if there is no checkpoint to restore,
     otherise restore from the latest checkpoint.
@@ -22,18 +43,7 @@ def get_resnet_tf_variables(sess, net_name, retrain=False):
     Returns: last saved iteration number
     """
 
-    # Find previous snapshots if there is any to restore from
-    ckpts_dir = cfg.get_ckpts_dir(net_name, imdb.name)
-    sfiles = os.path.join(CKPTS_DIR, cfg.TRAIN_SNAPSHOT_PREFIX + '_iter_*.ckpt.meta')
-    sfiles = glob.glob(sfiles)
-    sfiles.sort(key=os.path.getmtime)
-    # Get the snapshot name in TensorFlow
-    sfiles = [ss.replace('.meta', '') for ss in sfiles]
-
-    nfiles = os.path.join(CKPTS_DIR, cfg.TRAIN_SNAPSHOT_PREFIX + '_iter_*.pkl')
-    nfiles = glob.glob(nfiles)
-    nfiles.sort(key=os.path.getmtime)
-
+    sfiles = get_ordered_ckpts(sess, imdb, net_name)
     lsf = len(sfiles)
 
     if lsf == 0:

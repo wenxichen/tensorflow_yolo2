@@ -248,7 +248,7 @@ tfconfig = tf.ConfigProto(allow_soft_placement=True)
 tfconfig.gpu_options.allow_growth = True
 sess = tf.Session(config=tfconfig)
 
-last_iter_num = get_resnet_tf_variables(sess, 'resnet50')
+last_iter_num = get_resnet_tf_variables(sess, imdb, 'resnet50')
 
 cur_saver = tf.train.Saver()
 
