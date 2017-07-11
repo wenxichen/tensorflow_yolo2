@@ -31,15 +31,17 @@ def conv_layer(x, filter_size, input_chl, output_chl, stride):
     W_conv = weight_variable([filter_size, filter_size, input_chl, output_chl])
     b_conv = bias_variable([output_chl])
     h_conv = conv2d(x, W_conv, stride) + b_conv
-    return tf.maximum(alpha * h_conv, h_conv)
+    return h_conv
 
 
 def conv_bn_layer(x, filter_size, input_chl, output_chl, stride, is_training):
     h_conv_activated = conv_layer(
         x, filter_size, input_chl, output_chl, stride)
-    return tf.layers.batch_normalization(h_conv_activated,
+    h_bn_conv = tf.layers.batch_normalization(h_conv_activated,
                                          center=True, scale=True,
                                          training=is_training)
+    h_activated = tf.maximum(alpha * h_bn_conv, h_bn_conv)
+    return h_activated
 
 
 def fc_layer(x, input_dim, output_dim, flat=False, linear=False):

@@ -16,12 +16,13 @@ import config as cfg
 
 class ilsvrc_cls:
 
-    def __init__(self, image_set, rebuild=False, data_aug=False, multithread=False):
+    def __init__(self, image_set, rebuild=False, data_aug=False,
+                 multithread=False, batch_size=cfg.BATCH_SIZE):
         self.name = 'ilsvrc_2017_cls'
         self.devkit_path = cfg.ILSVRC_PATH
         self.data_path = self.devkit_path
         self.cache_path = cfg.CACHE_PATH
-        self.batch_size = cfg.BATCH_SIZE
+        self.batch_size = batch_size
         self.image_size = cfg.IMAGE_SIZE
         self.image_set = image_set
         self.rebuild = rebuild
