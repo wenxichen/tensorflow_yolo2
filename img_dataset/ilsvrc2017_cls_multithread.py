@@ -324,6 +324,7 @@ class ilsvrc_cls:
             random_crop_chance = random.randint(0, 3)
             too_small = False
             color_pert = bool(random.getrandbits(1))
+            exposure_shift = bool(random.getrandbits(1))
 
             if flip:
                 image = image[:, ::-1, :]
@@ -353,6 +354,14 @@ class ilsvrc_cls:
                 else:
                     hsv[:, :, 1] -= saturation_shift
                 image = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+
+            if exposure_shift:
+                brighter = bool(random.getrandbits(1))
+                if brighter:
+                    gamma = random.uniform(1, 2)
+                else:
+                    gamma = random.uniform(0.5, 1)
+                image = ((image / 255.0) ** (1.0 / gamma)) * 255
 
             # random crop
             if random_crop_chance > 0:

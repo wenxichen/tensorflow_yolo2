@@ -13,7 +13,7 @@ from img_dataset.TF_flowers import tf_flowers
 
 slim = tf.contrib.slim
 
-imdb = tf_flowers(0.2, data_aug=True)
+imdb = tf_flowers(0.2, data_aug=False)
 CKPTS_DIR = cfg.get_ckpts_dir('darknet19', imdb.name)
 
 
@@ -28,7 +28,7 @@ loss = tf.reduce_mean(loss)
 
 update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
 with tf.control_dependencies(update_ops):
-    train_op = tf.train.AdamOptimizer(learning_rate=0.0002).minimize(loss)
+    train_op = tf.train.AdamOptimizer(learning_rate=0.0001).minimize(loss)
 
 correct_pred = tf.equal(tf.cast(tf.argmax(logits, 1), tf.int64), label_data)
 accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
@@ -56,7 +56,7 @@ old_iter = int(fnames[-1][:-5])
 cur_saver = tf.train.Saver()
 
 T = Timer()
-for i in range(old_iter, old_iter + 50000):
+for i in range(old_iter, old_iter + 1000):
     T.tic()
     images, labels = imdb.get_train()
     _, loss_value, acc_value = sess.run([train_op, loss, accuracy],
@@ -68,9 +68,9 @@ for i in range(old_iter, old_iter + 50000):
 
     _time = T.toc(average=False)
     print('iter {:d}/{:d}, train_loss: {:.3}, trian_acc: {:.3}, val_loss: {:.3} val_acc: {:.3} take {:.2}s'
-          .format(i + 1, old_iter + 50000, loss_value, acc_value, val_loss_value, val_acc_value, _time))
+          .format(i + 1, old_iter + 1000, loss_value, acc_value, val_loss_value, val_acc_value, _time))
 
 
 save_path = cur_saver.save(sess, os.path.join(
-    CKPTS_DIR, cfg.TRAIN_SNAPSHOT_PREFIX + '_iter_' + str(old_iter + 50000) + '.ckpt'))
+    CKPTS_DIR, cfg.TRAIN_SNAPSHOT_PREFIX + '_iter_' + str(old_iter + 1000) + '.ckpt'))
 print("Model saved in file: %s" % save_path)

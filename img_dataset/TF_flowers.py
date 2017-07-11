@@ -69,19 +69,20 @@ class tf_flowers:
         random.shuffle(gt_labels)
         self.gt_labels = gt_labels
         self.dataset_size = len(gt_labels)
-        self.total_batch = int(math.ceil(self.dataset_size / float(self.batch_size)))
+        self.total_batch = int(
+            math.ceil(self.dataset_size / float(self.batch_size)))
         cut_idx = int(self.dataset_size * self.val_split)
         self.val_gt_labels = copy.deepcopy(gt_labels[:cut_idx])
         self.train_gt_labels = copy.deepcopy(gt_labels[cut_idx:])
         print('training set size: {:d}, validation set size: {:d}'
-        .format(len(self.train_gt_labels), len(self.val_gt_labels)))
-        
+              .format(len(self.train_gt_labels), len(self.val_gt_labels)))
+
     def get_train(self):
         return self._get('train')
 
     def get_val(self):
         return self._get('val')
-    
+
     def _get(self, image_set):
         """Get shuffled images and labels according to batchsize.
         Use image_set to set whether to get training set or validation set.
@@ -99,7 +100,7 @@ class tf_flowers:
             gt_labels = self.train_gt_labels
             cursor = self.train_cursor
             data_aug = self.data_aug
-        
+
         images = np.zeros(
             (self.batch_size, self.image_size, self.image_size, 3))
         labels = np.zeros(self.batch_size)
@@ -116,7 +117,7 @@ class tf_flowers:
                 cursor = 0
                 if image_set == 'train':
                     self.epoch += 1
-        
+
         if image_set == 'val':
             self.val_cursor = cursor
         elif image_set == 'train':
@@ -140,6 +141,7 @@ class tf_flowers:
             random_crop_chance = random.randint(0, 3)
             too_small = False
             color_pert = bool(random.getrandbits(1))
+            exposure_shift = bool(random.getrandbits(1))
 
             if flip:
                 image = image[:, ::-1, :]
@@ -169,6 +171,14 @@ class tf_flowers:
                 else:
                     hsv[:, :, 1] -= saturation_shift
                 image = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+
+            if exposure_shift:
+                brighter = bool(random.getrandbits(1))
+                if brighter:
+                    gamma = random.uniform(1, 2)
+                else:
+                    gamma = random.uniform(0.5, 1)
+                image = ((image / 255.0) ** (1.0 / gamma)) * 255
 
             # random crop
             if random_crop_chance > 0:
