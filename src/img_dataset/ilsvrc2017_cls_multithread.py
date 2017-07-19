@@ -31,9 +31,6 @@ class ilsvrc_cls:
         self.load_classes()
         self.cursor = 0
         self.epoch = 1
-        # TODO: not hard code totoal number of images
-        self.total_batch = int(math.ceil(1281167 / float(self.batch_size)))
-        # self.total_batch = 70
         self.gt_labels = None
         assert os.path.exists(self.devkit_path), \
             'ILSVRC path does not exist: {}'.format(self.devkit_path)
@@ -89,6 +86,9 @@ class ilsvrc_cls:
                 pickle.dump(gt_labels, f)
         random.shuffle(gt_labels)
         self.gt_labels = gt_labels
+        self.image_num = len(gt_labels)
+        self.total_batch = int(math.ceil(self.image_num / float(self.batch_size)))
+
 
     def _get(self):
         """Get shuffled images and labels according to batchsize.
@@ -127,7 +127,10 @@ class ilsvrc_cls:
         # TODO: add this to cfg file
         self.prefetch_size = 5  # in terms of batch
         # TODO: may not need readed_batch after validating everything
-        self.readed_batch = Array('i', self.total_batch)
+        self.read_batch_array_size = self.total_batch + self.prefetch_size * self.batch_size
+        self.readed_batch = Array('i', self.read_batch_array_size)
+        for i in range(self.read_batch_array_size):
+            self.readed_batch[i] = 0
         self.prefetched_images = np.zeros((self.batch_size * self.prefetch_size
                                            * self.num_child,
                                            self.image_size, self.image_size, 3))
@@ -229,7 +232,6 @@ class ilsvrc_cls:
             print "one epoch is about to finish! reseting..."
             self.collect_prefetch_list(
                 range(self.num_child / 2, self.num_child))
-            # print "#####passed here 1"
             self.reset = False
 
         elif self.num_batch_left == -1:
@@ -261,7 +263,6 @@ class ilsvrc_cls:
                                     float(self.prefetch_size))))
             self.start_prefetch_list(L)
             self.collect_prefetch_list(L)
-            # print "#####passed here 2"
 
         # reset after one epoch
         if self.batch_cursor_read == self.total_batch:
@@ -271,9 +272,14 @@ class ilsvrc_cls:
             self.batch_cursor_read = 0
             self.batch_cursor_fetched = 0
             random.shuffle(self.gt_labels)
+            for i in range(self.read_batch_array_size):
+                self.readed_batch[i] = 0
+            print "######### reset, epoch", self.epoch, "start!########"
             # prefill the fetch task for the new epoch
             for i in range(self.num_child):
                 self.start_prefetch(i)
+            for i in range(self.num_child / 2):
+                self.collect_prefetch(i)
 
         return (self.prefetched_images[start_index:start_index + self.batch_size],
                 self.prefetched_labels[start_index:start_index + self.batch_size])

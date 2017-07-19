@@ -44,7 +44,7 @@ sess = tf.Session(config=tfconfig)
 # init_op = tf.global_variables_initializer()
 # sess.run(init_op)
 # load previous models
-ckpts = get_ordered_ckpts(sess, imdb, 'darknet19')
+ckpts = get_ordered_ckpts(sess, imdb, 'darknet19', save_epoch=False)
 print('Restorining model snapshots from {:s}'.format(ckpts[-1]))
 old_saver = tf.train.Saver()
 old_saver.restore(sess, str(ckpts[-1]))
