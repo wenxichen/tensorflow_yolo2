@@ -50,7 +50,7 @@ loss = tf.reduce_mean(loss)
 
 update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
 with tf.control_dependencies(update_ops):
-    train_op = tf.train.AdamOptimizer().minimize(loss)
+    train_op = tf.train.AdamOptimizer(0.0005).minimize(loss)
 
 correct_pred = tf.equal(tf.cast(tf.argmax(logits, 1), tf.int32), label_data)
 accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
@@ -86,7 +86,7 @@ imdb.epoch = old_epoch + 1
 cur_saver = tf.train.Saver()
 
 T = Timer()
-for i in range(imdb.total_batch * 10 + 1):
+for i in range(imdb.total_batch * 50 + 1):
     T.tic()
     images, labels = imdb.get()
     _, loss_value, acc_value, train_summary = sess.run(
