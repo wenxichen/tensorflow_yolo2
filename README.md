@@ -9,6 +9,7 @@ Open terminal in the home directory of the project. Place relevant weights in th
 * train tensorflow slim resnet50 on Pascal: `python src/pascal/pascal_train_resnet.py`
 
 ## Resources
+Trained tensorflow model ckpts:
 * tensorflow slim [resnet50](https://www.dropbox.com/sh/bsj9fuuv4co23qy/AABRjYECNkCTPzgjWyBZMvLRa?dl=0) further trained on Pascal
 * [darknet19](https://www.dropbox.com/sh/7ncpmioirhr735e/AAALEw1nEJqQZRqtNGDvhiSHa?dl=0) trained on ImageNet for 88 epochs (validation accuracy ~60)
 
