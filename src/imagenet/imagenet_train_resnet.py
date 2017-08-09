@@ -1,4 +1,4 @@
-"""Train ILSVRC2017 Data using homemade scripts."""
+"""Train resnet50 on ILSVRC2017 Data using homemade scripts."""
 
 import cv2
 import os
@@ -6,15 +6,19 @@ import math
 import tensorflow as tf
 from multiprocessing import Process, Queue
 
-import os, sys
+import os
+import sys
 FILE_DIR = os.path.dirname(__file__)
-sys.path.append(FILE_DIR+'/../')
+sys.path.append(FILE_DIR + '/../')
 
 import config as cfg
+from slim_dir.nets import resnet_v1
 from img_dataset.ilsvrc2017_cls_multithread import ilsvrc_cls
-from yolo2_nets.darknet import darknet19
-from yolo2_nets.net_utils import get_ordered_ckpts
+from yolo2_nets.tf_resnet import resnet_v1_50
+from yolo2_nets.net_utils import get_resnet_tf_variables
 from utils.timer import Timer
+
+slim = tf.contrib.slim
 
 
 def get_validation_process(imdb, queue_in, queue_out):
@@ -25,8 +29,8 @@ def get_validation_process(imdb, queue_in, queue_out):
         queue_out.put([images, labels])
 
 
-imdb = ilsvrc_cls('train', data_aug=True, multithread=cfg.MULTITHREAD)
-val_imdb = ilsvrc_cls('val', batch_size=64)
+imdb = ilsvrc_cls('train', data_aug=True, multithread=cfg.MULTITHREAD, batch_size=32)
+val_imdb = ilsvrc_cls('val', batch_size=32)
 # set up child process for getting validation data
 queue_in = Queue()
 queue_out = Queue()
@@ -35,22 +39,27 @@ val_data_process = Process(target=get_validation_process,
 val_data_process.start()
 queue_in.put(True)  # start getting the first batch
 
-CKPTS_DIR = cfg.get_ckpts_dir('darknet19', imdb.name)
-TENSORBOARD_TRAIN_DIR, TENSORBOARD_VAL_DIR = cfg.get_output_tb_dir('darknet19', imdb.name)
-
+CKPTS_DIR = cfg.get_ckpts_dir('resnet50', imdb.name)
+TENSORBOARD_TRAIN_DIR, TENSORBOARD_VAL_DIR = cfg.get_output_tb_dir(
+    'resnet50', imdb.name)
 
 input_data = tf.placeholder(tf.float32, [None, 224, 224, 3])
 label_data = tf.placeholder(tf.int32, None)
 is_training = tf.placeholder(tf.bool)
 
-logits = darknet19(input_data, is_training=is_training)
+with slim.arg_scope(resnet_v1.resnet_arg_scope()):
+    logits, end_points = resnet_v1_50(input_data, num_classes=imdb.num_class,
+                                      is_training=is_training, global_pool=True)
 loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
     labels=label_data, logits=logits)
 loss = tf.reduce_mean(loss)
 
+vars_to_train = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='resnet_v1_50/logits')
+assert len(vars_to_train) != 0
+print "###vars to train###:", vars_to_train
 update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
 with tf.control_dependencies(update_ops):
-    train_op = tf.train.AdamOptimizer(0.0005).minimize(loss)
+    train_op = tf.train.AdamOptimizer().minimize(loss, var_list=vars_to_train)
 
 correct_pred = tf.equal(tf.cast(tf.argmax(logits, 1), tf.int32), label_data)
 accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
@@ -65,28 +74,18 @@ tfconfig = tf.ConfigProto(allow_soft_placement=True)
 tfconfig.gpu_options.allow_growth = True
 sess = tf.Session(config=tfconfig)
 
+old_epoch = get_resnet_tf_variables(sess, imdb, 'resnet50', detection=False)
+imdb.epoch = old_epoch + 1
+
 merged = tf.summary.merge_all()
 train_writer = tf.summary.FileWriter(TENSORBOARD_TRAIN_DIR)
 val_writer = tf.summary.FileWriter(TENSORBOARD_VAL_DIR)
-
-# # initialize variables, assume all vars are new now
-# init_op = tf.global_variables_initializer()
-# sess.run(init_op)
-# load previous models
-ckpts = get_ordered_ckpts(sess, imdb, 'darknet19')
-print('Restorining model snapshots from {:s}'.format(ckpts[-1]))
-old_saver = tf.train.Saver()
-old_saver.restore(sess, str(ckpts[-1]))
-print('Restored.')
-fnames = ckpts[-1].split('_')
-old_epoch = int(fnames[-1][:-5])
-imdb.epoch = old_epoch + 1
 
 # simple model saver
 cur_saver = tf.train.Saver()
 
 T = Timer()
-for i in range(imdb.total_batch * 50 + 1):
+for i in range(imdb.total_batch * 10 + 1):
     T.tic()
     images, labels = imdb.get()
     _, loss_value, acc_value, train_summary = sess.run(

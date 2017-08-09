@@ -58,6 +58,10 @@ from __future__ import print_function
 
 import tensorflow as tf
 
+import os, sys
+ROOT_DIR = os.path.dirname(__file__)
+sys.path.append(ROOT_DIR+'/../')
+
 from nets import resnet_utils
 
 

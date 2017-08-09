@@ -26,8 +26,11 @@ BATCH_SIZE = 48
 IMAGE_SIZE = 224
 RAND_CROP_UPBOUND = 292
 
+# YOLO1 VOC settings
 S = 7
 B = 2
+LAMBDA_COORD = 5
+LAMBDA_NOOBJ = 0.5
 
 FLIPPED = False
 REBUILD = False
@@ -36,23 +39,26 @@ MULTITHREAD = True
 ###########################
 # Configuration Functions #
 ###########################
-def get_output_tb_dir(network_name, imdb_name):
-    """Return the directory where tensorflow summaries are placed.
-    If the directory does not exist, it is created.
-
+def get_output_tb_dir(network_name, imdb_name, val=True):
+    """Return the directories where tensorflow summaries are placed.
+    If the directory does not exist, it is created. 
+    If val is False, the second item in the returned list is None.
     A canonical path is built using the name from an imdb and a network
     (if not None).
     """
     outdir = os.path.abspath(os.path.join(
         ROOT_DIR, 'tensorboard', network_name, imdb_name))
     traindir = os.path.join(outdir, 'train')
-    valdir = os.path.join(outdir, 'val')
     if not os.path.exists(outdir):
         os.makedirs(outdir)
     if not os.path.exists(traindir):
         os.makedirs(traindir)
-    if not os.path.exists(outdir):
-        os.makedirs(valdir)
+    if val:
+        valdir = os.path.join(outdir, 'val')
+        if not os.path.exists(outdir):
+            os.makedirs(valdir)
+    else:
+        valdir = None
     return traindir, valdir
 
 

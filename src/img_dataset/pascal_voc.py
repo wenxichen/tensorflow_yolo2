@@ -13,32 +13,32 @@ import config as cfg
 
 
 class pascal_voc:
-    def __init__(self, image_set, rebuild=False):
+    def __init__(self, image_set, batch_size=cfg.BATCH_SIZE, rebuild=False):
         self.name = 'voc_2007'
-            self.devkit_path = cfg.PASCAL_PATH
-            self.data_path = os.path.join(self.devkit_path, 'VOC2007')
-            self.cache_path = cfg.CACHE_PATH
-            self.batch_size = cfg.BATCH_SIZE
-            self.image_size = cfg.IMAGE_SIZE
-            self.cell_size = cfg.S
-            self.classes = ('aeroplane', 'bicycle', 'bird', 'boat',
-                            'bottle', 'bus', 'car', 'cat', 'chair',
-                            'cow', 'diningtable', 'dog', 'horse',
-                            'motorbike', 'person', 'pottedplant',
-                            'sheep', 'sofa', 'train', 'tvmonitor')
-            self.num_class = len(self.classes)
-            self.class_to_ind = dict(
-                list(zip(self.classes, list(range(self.num_class)))))
-            self.flipped = cfg.FLIPPED
-            self.image_set = image_set
-            self.rebuild = rebuild
-            self.cursor = 0
-            self.gt_labels = None
-            assert os.path.exists(self.devkit_path), \
-                'VOCdevkit path does not exist: {}'.format(self.devkit_path)
-            assert os.path.exists(self.data_path), \
-                'Path does not exist: {}'.format(self.data_path)
-            self.prepare()
+        self.devkit_path = cfg.PASCAL_PATH
+        self.data_path = os.path.join(self.devkit_path, 'VOC2007')
+        self.cache_path = cfg.CACHE_PATH
+        self.batch_size = batch_size
+        self.image_size = cfg.IMAGE_SIZE
+        self.cell_size = cfg.S
+        self.classes = ('aeroplane', 'bicycle', 'bird', 'boat',
+                        'bottle', 'bus', 'car', 'cat', 'chair',
+                        'cow', 'diningtable', 'dog', 'horse',
+                        'motorbike', 'person', 'pottedplant',
+                        'sheep', 'sofa', 'train', 'tvmonitor')
+        self.num_class = len(self.classes)
+        self.class_to_ind = dict(
+            list(zip(self.classes, list(range(self.num_class)))))
+        self.flipped = cfg.FLIPPED
+        self.image_set = image_set
+        self.rebuild = rebuild
+        self.cursor = 0
+        self.gt_labels = None
+        assert os.path.exists(self.devkit_path), \
+            'VOCdevkit path does not exist: {}'.format(self.devkit_path)
+        assert os.path.exists(self.data_path), \
+            'Path does not exist: {}'.format(self.data_path)
+        self.prepare()
 
     def get(self):
         images = np.zeros(
