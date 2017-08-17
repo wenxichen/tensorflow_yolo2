@@ -4,6 +4,8 @@ import tensorflow as tf
 
 alpha = 0.1
 
+# TODO: add name and scope!
+
 
 def weight_variable(shape):
     initial = tf.truncated_normal(shape, stddev=0.1)
@@ -38,8 +40,8 @@ def conv_bn_layer(x, filter_size, input_chl, output_chl, stride, is_training):
     h_conv_activated = conv_layer(
         x, filter_size, input_chl, output_chl, stride)
     h_bn_conv = tf.layers.batch_normalization(h_conv_activated,
-                                         center=True, scale=True,
-                                         training=is_training)
+                                              center=True, scale=True,
+                                              training=is_training)
     h_activated = tf.maximum(alpha * h_bn_conv, h_bn_conv)
     return h_activated
 
@@ -55,6 +57,7 @@ def fc_layer(x, input_dim, output_dim, flat=False, linear=False):
     return tf.maximum(alpha * h_fc, h_fc)
 
 
+# TODO: Going to be deprecated
 def darknet19(inputs,
               num_classes=None,
               is_training=True,
@@ -117,4 +120,82 @@ def darknet19(inputs,
         # end_points = slim.utils.convert_collection_to_dict(end_points_collection)
         # if num_classes is not None:
         #   end_points['predictions'] = slim.softmax(logits, scope='predictions')
-        return logits
+    return logits
+
+
+def darknet19_core(inputs,
+                   num_classes=None,
+                   is_training=True,
+                   global_pool=True,
+                   output_stride=None,
+                   reuse=None,
+                   scope='darknet19'):
+    """Darknet19 architecture built according to 
+    YOLO9000: Better, Faster, Stronger by J. Redmon and A. Farhadi.
+
+    Args:
+        inputs: 4D numpy array
+
+    Returns:
+        last conv layer 
+    """
+    # TODO: may need to change num_classes in the implementation to make the net more flexible
+
+    with tf.variable_scope(scope, 'darknet19', [inputs], reuse=reuse) as sc:
+        # end_points_collection = sc.name + '_end_points'
+        # with slim.arg_scope([],
+        #                     outputs_collections=end_points_collection):
+        #   with slim.arg_scope([], is_training=is_training):
+
+        h_conv1 = conv_bn_layer(inputs, 3, 3, 32, 1, is_training)
+        h_pool1 = max_pool(h_conv1, 2, 2)
+
+        h_conv2 = conv_bn_layer(h_pool1, 3, 32, 64, 1, is_training)
+        h_pool2 = max_pool(h_conv2, 2, 2)
+
+        h_conv3 = conv_bn_layer(h_pool2, 3, 64, 128, 1, is_training)
+        h_conv4 = conv_bn_layer(h_conv3, 3, 128, 64, 1, is_training)
+        h_conv5 = conv_bn_layer(h_conv4, 3, 64, 128, 1, is_training)
+        h_pool3 = max_pool(h_conv5, 2, 2)
+
+        h_conv6 = conv_bn_layer(h_pool3, 3, 128, 256, 1, is_training)
+        h_conv7 = conv_bn_layer(h_conv6, 1, 256, 128, 1, is_training)
+        h_conv8 = conv_bn_layer(h_conv7, 3, 128, 256, 1, is_training)
+        h_pool4 = max_pool(h_conv8, 2, 2)
+
+        h_conv9 = conv_bn_layer(h_pool4, 3, 256, 512, 1, is_training)
+        h_conv10 = conv_bn_layer(h_conv9, 1, 512, 256, 1, is_training)
+        h_conv11 = conv_bn_layer(h_conv10, 3, 256, 512, 1, is_training)
+        h_conv12 = conv_bn_layer(h_conv11, 1, 512, 256, 1, is_training)
+        h_conv13 = conv_bn_layer(h_conv12, 3, 256, 512, 1, is_training)
+        h_pool5 = max_pool(h_conv13, 2, 2)
+
+        h_conv14 = conv_bn_layer(h_pool5, 3, 512, 1024, 1, is_training)
+        h_conv15 = conv_bn_layer(h_conv14, 1, 1024, 512, 1, is_training)
+        h_conv16 = conv_bn_layer(h_conv15, 3, 512, 1024, 1, is_training)
+        h_conv17 = conv_bn_layer(h_conv16, 1, 1024, 512, 1, is_training)
+        h_conv18 = conv_bn_layer(h_conv17, 3, 512, 1024, 1, is_training)
+
+        return h_conv18
+
+
+def darknet19_detection(net,
+                        output_filter,
+                        is_training=True,
+                        scope='darknet19_detection',
+                        reuse=None):
+    """
+    """
+    with tf.variable_scope(scope, 'darknet19_detection', [net], reuse=reuse) as sc:
+        with tf.variable_scope('conv1'):
+            h_conv_det1 = conv_bn_layer(net, 3, 1024, 1024, 1, is_training)
+        with tf.variable_scope('conv2'):
+            h_conv_det2 = conv_bn_layer(
+                h_conv_det1, 3, 1024, 1024, 1, is_training)
+        with tf.variable_scope('conv3'):
+            h_conv_det3 = conv_bn_layer(
+                h_conv_det2, 3, 1024, 1024, 1, is_training)
+        with tf.variable_scope('output'):
+            output = conv_bn_layer(h_conv_det3, 1, 1024,
+                                   output_filter, 1, is_training)
+    return output

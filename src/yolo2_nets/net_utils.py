@@ -157,7 +157,7 @@ def get_iou(boxes1, boxes2, scope='iou'):
     return tf.clip_by_value(inter_square / union_square, 0.0, 1.0)
 
 
-def get_loss(net, labels, num_calss, batch_size, image_size, S, B, OFFSET, scope='loss_layer'):
+def get_loss(net, labels, num_class, batch_size, image_size, S, B, OFFSET, scope='loss_layer'):
     """Create loss from the last fc layer.
 
     Args:
@@ -237,6 +237,120 @@ def get_loss(net, labels, num_calss, batch_size, image_size, S, B, OFFSET, scope
         boxes_delta_ys = predict_boxes[:, :, :, :, 1] - gt_rel_ys
         boxes_delta_ws = tf.sqrt(predict_boxes[:, :, :, :, 2]) - gt_rel_ws
         boxes_delta_hs = tf.sqrt(predict_boxes[:, :, :, :, 3]) - gt_rel_hs
+        boxes_delta = tf.stack(
+            [boxes_delta_xs, boxes_delta_ys, boxes_delta_ws, boxes_delta_hs], axis=4)
+        boxes_delta = coord_mask * boxes_delta
+        coord_loss = tf.reduce_mean(tf.reduce_sum(tf.square(boxes_delta), axis=[
+                                    1, 2, 3, 4]), name='coord_loss') * cfg.LAMBDA_COORD
+
+        #########################
+        # calculate object loss #
+        #########################
+        # object loss
+        object_delta = object_mask * (predict_confidence - ious)
+        object_loss = tf.reduce_mean(tf.reduce_sum(
+            tf.square(object_delta), axis=[1, 2, 3]), name='object_loss')
+        # noobject loss
+        noobject_delta = noobject_mask * predict_confidence
+        noobject_loss = tf.reduce_mean(tf.reduce_sum(tf.square(noobject_delta), axis=[
+                                       1, 2, 3]), name='noobject_loss') * cfg.LAMBDA_NOOBJ
+
+        tf.summary.scalar('class_loss', class_loss)
+        tf.summary.scalar('object_loss', object_loss)
+        tf.summary.scalar('noobject_loss', noobject_loss)
+        tf.summary.scalar('coord_loss', coord_loss)
+
+        tf.summary.histogram('boxes_delta_x', boxes_delta_xs)
+        tf.summary.histogram('boxes_delta_y', boxes_delta_ys)
+        tf.summary.histogram('boxes_delta_w', boxes_delta_ws)
+        tf.summary.histogram('boxes_delta_h', boxes_delta_hs)
+        tf.summary.histogram('iou', ious)
+
+    return class_loss + object_loss + noobject_loss + coord_loss, ious, object_mask
+
+
+# TODO: May need to use this on going, do sqrt on gt rather than predictions
+def get_loss_new(net, labels, num_class, batch_size, image_size, S, B, OFFSET, scope='loss_layer'):
+    """Create loss from the last fc layer.
+
+    Args:
+        net: the last fc layer reshaped to (BATCH_SIZE, S, S, 5B+NUM_CLASS).
+        labels: the ground truth of shape (BATCH_SIZE, S, S, 5+NUMCLASS) with the following content:
+                labels[:,:,:,0] : ground truth of responsibility of the predictor
+                labels[:,:,:,1:5] : ground truth of bounding box coordinates in reshaped size
+                labels[:,:,:,5:] : ground truth of classes
+
+    Return:
+        loss: class loss + object loss + noobject loss + coordinate loss
+              with shape (BATCH_SIZE)
+    """
+
+
+    with tf.variable_scope(scope):
+        predict_classes = net[:, :, :, :num_class]
+        # confidence is defined as Pr(Object) * IOU
+        predict_confidence = net[:, :, :, num_class:num_class + B]
+        # predict_boxes has last dimenion has [x, y, w, h] * B
+        # where (x, y) "represent the center of the box relative to the bounds of the grid cell"
+        predict_boxes = tf.reshape(
+            net[:, :, :, num_class + B:], [batch_size, S, S, B, 4])
+
+        ########################
+        # calculate class loss #
+        ########################
+        responsible = tf.reshape(labels[:, :, :, 0], [
+                                 batch_size, S, S, 1])  # [BATCH_SIZE, S, S]
+        classes = labels[:, :, :, 5:]
+
+        class_delta = responsible * \
+            (predict_classes - classes)  # [:,S,S,NUM_CLASS]
+        class_loss = tf.reduce_mean(tf.reduce_sum(
+            tf.square(class_delta), axis=[1, 2, 3]), name='class_loss')
+
+        #############################
+        # calculate coordinate loss #
+        #############################
+        gt_boxes = tf.reshape(labels[:, :, :, 1:5], [batch_size, S, S, 1, 4])
+        gt_boxes = tf.tile(gt_boxes, [1, 1, 1, B, 1]) / float(image_size)
+
+        # add offsets to the predicted box coordinates 
+        # to get absolute coordinates between 0 and 1
+        offset = tf.constant(OFFSET, dtype=tf.float32)
+        offset = tf.reshape(offset, [1, S, S, B])
+        offset = tf.tile(offset, [batch_size, 1, 1, 1])
+        predict_xs = (predict_boxes[:, :, :, :, 0] + offset) / float(S)
+        predict_ys = (predict_boxes[:, :, :, :, 1] +
+                      tf.transpose(offset, (0, 2, 1, 3))) / float(S)
+        predict_ws = tf.square(predict_boxes[:, :, :, :, 2])
+        predict_hs = tf.square(predict_boxes[:, :, :, :, 3])
+        predict_boxes_offset = tf.stack(
+            [predict_xs, predict_ys, predict_ws, predict_hs], axis=4)
+        # gt_boxes_offset = tf.stack([gt_xs, gt_ys, gt_ws, gt_hs], axis=4)
+
+        # calculate IOUs
+        ious = get_iou(predict_boxes_offset, gt_boxes)
+
+        # calculate object masks and nonobject masks tensor [BATCH_SIZE, S, S, B]
+        object_mask = tf.reduce_max(ious, 3, keep_dims=True)
+        object_mask = tf.cast((ious >= object_mask), tf.float32) * responsible
+        noobject_mask = tf.ones_like(
+            object_mask, dtype=tf.float32) - object_mask
+
+        # add offsets to the ground truth box coordinates 
+        # to get absolute coordinates between 0 and 1
+        gt_rel_xs = gt_boxes[:, :, :, :, 0] * S - offset
+        gt_rel_ys = gt_boxes[:, :, :, :, 1] * \
+            S - tf.transpose(offset, (0, 2, 1, 3))
+        gt_rel_ws = tf.sqrt(gt_boxes[:, :, :, :, 2])
+        gt_rel_hs = tf.sqrt(gt_boxes[:, :, :, :, 3])
+
+        # coordinate loss
+        coord_mask = tf.expand_dims(object_mask, 4)
+        boxes_delta_xs = predict_boxes[:, :, :, :, 0] - gt_rel_xs
+        boxes_delta_ys = predict_boxes[:, :, :, :, 1] - gt_rel_ys
+        # TODO: double check if it is ok to get rid of the sqrt here
+        boxes_delta_ws = predict_boxes[:, :, :, :, 2] - gt_rel_ws
+        boxes_delta_hs = predict_boxes[:, :, :, :, 3] - gt_rel_hs
         boxes_delta = tf.stack(
             [boxes_delta_xs, boxes_delta_ys, boxes_delta_ws, boxes_delta_hs], axis=4)
         boxes_delta = coord_mask * boxes_delta
