@@ -1,16 +1,18 @@
 # README
 
-**Coming Next: better trained darknet19 model, and easier to use detection tool**
+**Coming Next: better trained darknet19 model, and easier to use detection tool, (better explanation for dataset folder placement for training)**
 
 ## Scripts
 Open terminal in the home directory of the project. Then you can:
 * use darknet19 to detect: `python src/pascal/pascal_detect_darknet.py`
-  * first put [pascal trained darknet19 weights] into `weights/`(https://www.dropbox.com/sh/gvrr4udelzflcc7/AAAr_Sg4BimiAfssdIhiGO7va?dl=0) directory (since the model has been only trained for 80k iterations, the accuracy might not be optimal)
+  * first, put [pascal trained darknet19 weights](https://www.dropbox.com/sh/gvrr4udelzflcc7/AAAr_Sg4BimiAfssdIhiGO7va?dl=0) into `weights/` directory (since the model has been only trained for 80k iterations, the accuracy might not be optimal)
   * change the `image_path` variable to the image you want to do detection on
 * train darknet19 on ImageNet: `python src/imagenet/imagenet_train_darknet.py`
+  * first, put ILSVRC dataset into `data/` folder
   * the implementation is multithread, though it might not be optimized enough. Sugguestions are welcome.
 * train tensorflow slim resnet50 on Pascal: `python src/pascal/pascal_train_resnet.py`
-  * first put [tensorflow slim resnet50 weights](http://download.tensorflow.org/models/resnet_v1_50_2016_08_28.tar.gz) in the `weights/` directory
+  * first, put VOCdevkit dataset into `data/` folder
+  * second, put [tensorflow slim resnet50 weights](http://download.tensorflow.org/models/resnet_v1_50_2016_08_28.tar.gz) in the `weights/` directory
 
 ## Resources
 Trained tensorflow model ckpts:
