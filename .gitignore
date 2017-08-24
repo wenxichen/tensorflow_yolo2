@@ -3,7 +3,7 @@
 cache/*
 *.pyc
 tensorboard/*
-weights/*.ckpt
+weights/*.ckpt*
 ckpts/*
 data/VOCdevkit
 experiments*

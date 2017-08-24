@@ -18,7 +18,7 @@ from yolo2_nets.darknet import darknet19_core, darknet19_detection
 slim = tf.contrib.slim
 
 # TODO: make the image path to be user input
-image_path = '/home/wenxi/Projects/tensorflow_yolo2/experiments/fig2.jpg'
+image_path = '/home/wenxi/Projects/tensorflow_yolo2/tests/testImg2.jpg'
 
 IMAGE_SIZE = cfg.IMAGE_SIZE
 S = cfg.S
@@ -49,9 +49,15 @@ tfconfig = tf.ConfigProto(allow_soft_placement=True)
 tfconfig.gpu_options.allow_growth = True
 sess = tf.Session(config=tfconfig)
 
-# Load checkpoint
-_ = restore_darknet19_variables(sess, imdb, 'darknet19', save_epoch=False)
+# Load from weight file or checkpoint
+# TODO: may need to put this in net_utils.py
+if os.path.isfile(cfg.darknet_pascal_weight_path + ".meta"):
+    print 'Restorining model from weight file {:s}'.format(cfg.darknet_pascal_weight_path)
+    saver = tf.train.Saver()
+    saver.restore(sess, cfg.darknet_pascal_weight_path)
+    print 'Restored.'
+else:
+    _ = restore_darknet19_variables(sess, imdb, 'darknet19', save_epoch=False)
 
 predicts = sess.run(grid_net, {input_data: image})
 show_yolo_detection(image_path, predicts, imdb)
-

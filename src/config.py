@@ -19,7 +19,13 @@ CKPTS_PATH = os.path.join(ROOT_DIR, 'ckpts')
 
 TENSORBOARD_PATH = os.path.join(ROOT_DIR, 'tensorboard')
 
+# weights pathes, customize if needed
+darknet_pascal_weight_path = os.path.join(WEIGHTS_PATH, "darknet19_pascal.ckpt")
 
+
+##########
+# Hypers #
+##########
 TRAIN_SNAPSHOT_PREFIX = 'train'
 
 BATCH_SIZE = 48
@@ -40,6 +46,7 @@ LAMBDA_NOOBJ = 0.5
 FLIPPED = False
 REBUILD = False
 MULTITHREAD = True
+
 
 ###########################
 # Configuration Functions #
