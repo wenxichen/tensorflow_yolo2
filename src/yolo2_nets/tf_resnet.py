@@ -6,11 +6,8 @@ import os
 
 from slim_dir.nets import resnet_v1, resnet_utils
 
-import config as cfg
-from utils.timer import Timer
-from yolo2_nets.net_utils import get_resnet_tf_variables
-
 slim = tf.contrib.slim
+
 
 def resnet_v1_50(inputs,
                  num_classes=None,

@@ -1,7 +1,6 @@
 """Pascal VOC dataset class
 """
 
-
 import os
 import xml.etree.ElementTree as ET
 import numpy as np
@@ -71,7 +70,7 @@ class pascal_voc:
         gt_labels = self.load_labels()
         # TODO: consider adding flipped data into the saved cache's
         if self.flipped:
-            print('Appending horizontally-flipped training examples ...')
+            print 'Appending horizontally-flipped training examples ...'
             gt_labels_cp = copy.deepcopy(gt_labels)
             for idx in range(len(gt_labels_cp)):
                 gt_labels_cp[idx]['flipped'] = True
@@ -91,13 +90,13 @@ class pascal_voc:
             self.cache_path, 'pascal_' + self.image_set + '_gt_labels.pkl')
 
         if os.path.isfile(cache_file) and not self.rebuild:
-            print('Loading gt_labels from: ' + cache_file)
+            print 'Loading gt_labels from: ' + cache_file
             with open(cache_file, 'rb') as f:
                 gt_labels = pickle.load(f)
-            print('{} gt_labels loaded from {}'.format(self.name, cache_file))
+            print '{} gt_labels loaded from {}'.format(self.name, cache_file)
             return gt_labels
 
-        print('Processing gt_labels from: ' + self.data_path)
+        print 'Processing gt_labels from: ' + self.data_path
 
         if not os.path.exists(self.cache_path):
             os.makedirs(self.cache_path)
@@ -118,7 +117,7 @@ class pascal_voc:
                 self.data_path, 'JPEGImages', index + '.jpg')
             gt_labels.append(
                 {'imname': imname, 'label': label, 'flipped': False})
-        print('Saving gt_labels to: ' + cache_file)
+        print 'Saving gt_labels to: ' + cache_file
         with open(cache_file, 'wb') as f:
             pickle.dump(gt_labels, f)
         return gt_labels

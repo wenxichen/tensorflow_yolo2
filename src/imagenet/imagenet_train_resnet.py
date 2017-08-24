@@ -15,7 +15,7 @@ import config as cfg
 from slim_dir.nets import resnet_v1
 from img_dataset.ilsvrc2017_cls_multithread import ilsvrc_cls
 from yolo2_nets.tf_resnet import resnet_v1_50
-from yolo2_nets.net_utils import get_resnet_tf_variables
+from yolo2_nets.net_utils import restore_resnet_tf_variables
 from utils.timer import Timer
 
 slim = tf.contrib.slim
@@ -74,7 +74,7 @@ tfconfig = tf.ConfigProto(allow_soft_placement=True)
 tfconfig.gpu_options.allow_growth = True
 sess = tf.Session(config=tfconfig)
 
-old_epoch = get_resnet_tf_variables(sess, imdb, 'resnet50', detection=False)
+old_epoch = restore_resnet_tf_variables(sess, imdb, 'resnet50', detection=False)
 imdb.epoch = old_epoch + 1
 
 merged = tf.summary.merge_all()

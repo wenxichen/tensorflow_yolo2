@@ -1,9 +1,5 @@
 """Use pretained resnet50 on tensorflow to imitate YOLOv1"""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import tensorflow as tf
 import numpy as np
 
@@ -16,26 +12,21 @@ from slim_dir.nets import resnet_v1
 import config as cfg
 from img_dataset.pascal_voc import pascal_voc
 from utils.timer import Timer
-from yolo2_nets.net_utils import get_resnet_tf_variables, get_loss
+from yolo2_nets.net_utils import restore_resnet_tf_variables, get_loss
 from yolo2_nets.tf_resnet import resnet_v1_50
 
 slim = tf.contrib.slim
 
 # set hyper parameters
-ADD_ITER = 80000
-NUM_CLASS = 20
+ADD_ITER = 200000
 IMAGE_SIZE = cfg.IMAGE_SIZE
 S = cfg.S
 SIZE_PER_CELL = 1.0 / S
 B = cfg.B
-BATCH_SIZE = 16
-
-OFFSET = np.array(range(S) * S * B)
-OFFSET = np.reshape(OFFSET, (B, S, S))
-OFFSET = np.transpose(OFFSET, (1, 2, 0))  # [Y,X,B]
-
+BATCH_SIZE = 4
 # create database instance
 imdb = pascal_voc('trainval', batch_size=BATCH_SIZE, rebuild=cfg.REBUILD)
+NUM_CLASS = imdb.num_class
 CKPTS_DIR = cfg.get_ckpts_dir('resnet50', imdb.name)
 
 input_data = tf.placeholder(tf.float32, [None, 224, 224, 3])
@@ -49,24 +40,23 @@ with slim.arg_scope(resnet_v1.resnet_arg_scope()):
 
 net = slim.flatten(net)
 
-# TODO: this is a bug, the fcnet below is not used!!
-fcnet = slim.fully_connected(net, 4096, scope='yolo_fc1')
-fcnet = tf.nn.dropout(fcnet, 0.5)
+fcnet1 = slim.fully_connected(net, 4096, scope='yolo_fc1')
+fcnet1 = tf.nn.dropout(fcnet1, 0.5)
 
 # in this case 7x7x30
-fcnet = slim.fully_connected(
-    net, S * S * (5 * B + NUM_CLASS), scope='yolo_fc2')
+fcnet2 = slim.fully_connected(
+    fcnet1, S * S * (5 * B + NUM_CLASS), scope='yolo_fc2')
 
-grid_net = tf.reshape(fcnet, [-1, S, S, (5 * B + NUM_CLASS)])
+grid_net = tf.reshape(fcnet2, [-1, S, S, (5 * B + NUM_CLASS)])
 
 loss, ious, object_mask = get_loss(grid_net, label_data, num_class=NUM_CLASS,
-                                   batch_size=BATCH_SIZE, image_size=IMAGE_SIZE, 
-                                   S=S, B=B, OFFSET=OFFSET)
+                                   batch_size=BATCH_SIZE, image_size=IMAGE_SIZE,
+                                   S=S, B=B, OFFSET=cfg.YOLO_GRID_OFFSET)
 tf.summary.scalar('total_loss', loss)
 
 update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
 with tf.control_dependencies(update_ops):
-    train_op = tf.train.AdamOptimizer(0.00005).minimize(loss)
+    train_op = tf.train.AdamOptimizer(0.0005).minimize(loss)
     # train_op = tf.train.MomentumOptimizer(0.00005, 0.98).minimize(loss)
 
 ######################
@@ -76,7 +66,7 @@ tfconfig = tf.ConfigProto(allow_soft_placement=True)
 tfconfig.gpu_options.allow_growth = True
 sess = tf.Session(config=tfconfig)
 
-last_iter_num = get_resnet_tf_variables(
+last_iter_num = restore_resnet_tf_variables(
     sess, imdb, 'resnet50', save_epoch=False)
 
 cur_saver = tf.train.Saver()
@@ -100,11 +90,11 @@ for i in range(last_iter_num + 1, TOTAL_ITER + 1):
     train_writer.add_summary(summary, i)
     if i % 10 == 0:
         _time = T.toc(average=False)
-        print('iter {:d}/{:d}, total loss: {:.3}, take {:.2}s'.
-              format(i, TOTAL_ITER, loss_value, _time))
+        print 'iter {:d}/{:d}, total loss: {:.3}, take {:.2}s'\
+              .format(i, TOTAL_ITER, loss_value, _time))
         T.tic()
 
     if i % 40000 == 0:
-        save_path = cur_saver.save(sess, os.path.join(
+        save_path=cur_saver.save(sess, os.path.join(
             CKPTS_DIR, cfg.TRAIN_SNAPSHOT_PREFIX + '_iter_' + str(i) + '.ckpt'))
-        print("Model saved in file: %s" % save_path)
+        print "Model saved in file: %s" % save_path

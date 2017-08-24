@@ -14,26 +14,21 @@ sys.path.append(FILE_DIR + '/../')
 import config as cfg
 from img_dataset.pascal_voc import pascal_voc
 from utils.timer import Timer
-from yolo2_nets.net_utils import get_resnet_tf_variables, get_loss_new
+from yolo2_nets.net_utils import get_loss
 from yolo2_nets.darknet import darknet19_core, darknet19_detection
 
 slim = tf.contrib.slim
 
 # set hyper parameters
 ADD_ITER = 80000
-NUM_CLASS = 20
 IMAGE_SIZE = cfg.IMAGE_SIZE
 S = cfg.S
 SIZE_PER_CELL = 1.0 / S
 B = cfg.B
 BATCH_SIZE = 24
-
-OFFSET = np.array(range(S) * S * B)
-OFFSET = np.reshape(OFFSET, (B, S, S))
-OFFSET = np.transpose(OFFSET, (1, 2, 0))  # [Y,X,B]
-
 # create database instance
 imdb = pascal_voc('trainval', batch_size=BATCH_SIZE, rebuild=cfg.REBUILD)
+NUM_CLASS = imdb.num_class
 CKPTS_DIR = cfg.get_ckpts_dir('darknet19', imdb.name)
 
 input_data = tf.placeholder(tf.float32, [None, 224, 224, 3])
@@ -46,9 +41,9 @@ final_conv_layer = darknet19_detection(core_net, 30)
 
 grid_net = tf.reshape(final_conv_layer, [-1, S, S, (5 * B + NUM_CLASS)])
 
-loss, ious, object_mask = get_loss_new(grid_net, label_data, num_class=NUM_CLASS,
-                                   batch_size=BATCH_SIZE, image_size=IMAGE_SIZE, 
-                                   S=S, B=B, OFFSET=OFFSET)
+loss, ious, object_mask = get_loss(grid_net, label_data, num_class=NUM_CLASS,
+                                   batch_size=BATCH_SIZE, image_size=IMAGE_SIZE,
+                                   S=S, B=B, OFFSET=cfg.YOLO_GRID_OFFSET)
 tf.summary.scalar('total_loss', loss)
 
 update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
@@ -81,7 +76,7 @@ print 'vars_to_init:', len(vars_to_init)
 init_op = tf.variables_initializer(vars_to_init)
 saver = tf.train.Saver(vars_to_restore)
 
-print('Initializing new variables to train from imagenet trained model')
+print 'Initializing new variables to train from imagenet trained model'
 sess.run(init_op)
 saver.restore(sess, os.path.join(LOAD_CKPTS_DIR, 'train_epoch_98.ckpt'))
 ####################################################################################
@@ -108,11 +103,11 @@ for i in range(last_iter_num + 1, TOTAL_ITER + 1):
     train_writer.add_summary(summary, i)
     if i % 10 == 0:
         _time = T.toc(average=False)
-        print('iter {:d}/{:d}, total loss: {:.3}, take {:.2}s'.
-              format(i, TOTAL_ITER, loss_value, _time))
+        print 'iter {:d}/{:d}, total loss: {:.3}, take {:.2}s'\
+            .format(i, TOTAL_ITER, loss_value, _time)
         T.tic()
 
     if i % 40000 == 0:
         save_path = cur_saver.save(sess, os.path.join(
             CKPTS_DIR, cfg.TRAIN_SNAPSHOT_PREFIX + '_iter_' + str(i) + '.ckpt'))
-        print("Model saved in file: %s" % save_path)
+        print "Model saved in file: %s" % save_path

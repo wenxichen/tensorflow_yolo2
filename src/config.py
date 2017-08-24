@@ -1,4 +1,5 @@
 import os
+import numpy as np
 
 ##########
 # Pathes #
@@ -29,6 +30,10 @@ RAND_CROP_UPBOUND = 292
 # YOLO1 VOC settings
 S = 7
 B = 2
+YOLO_GRID_OFFSET = np.array(range(S) * S * B)
+YOLO_GRID_OFFSET = np.reshape(YOLO_GRID_OFFSET, (B, S, S))
+YOLO_GRID_OFFSET = np.transpose(YOLO_GRID_OFFSET, (1, 2, 0))  # [Y,X,B]
+
 LAMBDA_COORD = 5
 LAMBDA_NOOBJ = 0.5
 

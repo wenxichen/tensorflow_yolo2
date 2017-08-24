@@ -1,4 +1,4 @@
-"""Use trained resnet50 to detect"""
+"""Use trained darknet19 to detect"""
 
 import tensorflow as tf
 import numpy as np
@@ -9,17 +9,16 @@ import sys
 FILE_DIR = os.path.dirname(__file__)
 sys.path.append(FILE_DIR + '/../')
 
-from slim_dir.nets import resnet_v1
 import config as cfg
 from img_dataset.pascal_voc import pascal_voc
 from utils.timer import Timer
-from yolo2_nets.net_utils import restore_resnet_tf_variables, show_yolo_detection
-from yolo2_nets.tf_resnet import resnet_v1_50
+from yolo2_nets.net_utils import restore_darknet19_variables, show_yolo_detection
+from yolo2_nets.darknet import darknet19_core, darknet19_detection
 
 slim = tf.contrib.slim
 
 # TODO: make the image path to be user input
-image_path = '/home/wenxi/Projects/tensorflow_yolo2/experiments/fig1.jpg'
+image_path = '/home/wenxi/Projects/tensorflow_yolo2/experiments/fig2.jpg'
 
 IMAGE_SIZE = cfg.IMAGE_SIZE
 S = cfg.S
@@ -27,7 +26,7 @@ B = cfg.B
 # create database instance
 imdb = pascal_voc('trainval')
 NUM_CLASS = imdb.num_class
-CKPTS_DIR = cfg.get_ckpts_dir('resnet50', imdb.name)
+CKPTS_DIR = cfg.get_ckpts_dir('darknet19', imdb.name)
 
 input_data = tf.placeholder(tf.float32, [None, 224, 224, 3])
 
@@ -39,20 +38,9 @@ image = (image / 255.0) * 2.0 - 1.0
 image = image.reshape((1, 224, 224, 3))
 
 
-# get the right arg_scope in order to load weights
-with slim.arg_scope(resnet_v1.resnet_arg_scope()):
-    # net is shape [batch_size, S, S, 2048] if input size is 244 x 244
-    net, end_points = resnet_v1_50(input_data, is_training=False)
-
-net = slim.flatten(net)
-
-fcnet1 = slim.fully_connected(net, 4096, scope='yolo_fc1')
-
-# in this case 7x7x30
-fcnet2 = slim.fully_connected(
-    fcnet1, S * S * (5 * B + NUM_CLASS), scope='yolo_fc2')
-
-grid_net = tf.reshape(fcnet2, [-1, S, S, (5 * B + NUM_CLASS)])
+core_net = darknet19_core(input_data, is_training=False)
+final_conv_layer = darknet19_detection(core_net, 30)
+grid_net = tf.reshape(final_conv_layer, [-1, S, S, (5 * B + NUM_CLASS)])
 
 ######################
 # Initialize Session #
@@ -62,7 +50,8 @@ tfconfig.gpu_options.allow_growth = True
 sess = tf.Session(config=tfconfig)
 
 # Load checkpoint
-_ = restore_resnet_tf_variables(sess, imdb, 'resnet50', save_epoch=False)
+_ = restore_darknet19_variables(sess, imdb, 'darknet19', save_epoch=False)
 
 predicts = sess.run(grid_net, {input_data: image})
 show_yolo_detection(image_path, predicts, imdb)
+
