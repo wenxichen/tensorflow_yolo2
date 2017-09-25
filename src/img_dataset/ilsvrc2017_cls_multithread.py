@@ -410,3 +410,19 @@ class ilsvrc_cls:
         image = (image / 255.0) * 2.0 - 1.0
 
         return image
+
+
+def save_synset_to_ilsvrcid_map(meta_file):
+    """Create a mape from synset to ilsvrcid and save it as a pickle file.
+    """
+
+    from scipy.io import loadmat
+    meta = loadmat(meta_file)
+
+    D = {}
+    for item in meta['synsets']:
+        D[str(item[0][1][0])] = item[0][0][0,0]
+    
+    pickle_file = os.path.join(os.path.dirname(__file__), 'syn2ilsid_map.pickle')
+    with open(pickle_file, 'wb') as f:
+        pickle.dump(D, f)
