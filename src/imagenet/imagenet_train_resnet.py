@@ -1,8 +1,5 @@
 """Train resnet50 on ILSVRC2017 Data using homemade scripts."""
 
-import cv2
-import os
-import math
 import tensorflow as tf
 from multiprocessing import Process, Queue
 

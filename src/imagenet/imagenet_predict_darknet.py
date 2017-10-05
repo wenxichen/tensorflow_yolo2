@@ -45,7 +45,7 @@ print('Restored.')
 T = Timer()
 # while True:
 # f = raw_input("image to predict: ")
-f = "/home/wenxi/Projects/tensorflow_yolo2/data/ILSVRC/Data/CLS-LOC/train/n01537544/n01537544_16.JPEG"
+f = "/home/wenxi/Projects/kaggle_adv/nips17_adversarial_competition/dataset/images/0c7ac4a8c9dfa802.png"
 # if f.lower() == "quit":
     # break
 image = cv2.imread(f)

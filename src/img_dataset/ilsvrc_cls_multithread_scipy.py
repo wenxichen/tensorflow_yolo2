@@ -2,7 +2,7 @@
 """
 
 import os
-import cv2
+from scipy import misc
 import math
 import numpy as np
 import random
@@ -16,9 +16,9 @@ import config as cfg
 
 class ilsvrc_cls:
 
-    def __init__(self, image_set, rebuild=False, data_aug=False,
+    def __init__(self, image_set, rebuild=False,
                  multithread=False, batch_size=cfg.BATCH_SIZE,
-                 image_size = cfg.IMAGE_SIZE, RGB=False):
+                 image_size = cfg.IMAGE_SIZE, random_noise=False):
         self.name = 'ilsvrc_2017_cls'
         self.devkit_path = cfg.ILSVRC_PATH
         self.data_path = self.devkit_path
@@ -28,8 +28,7 @@ class ilsvrc_cls:
         self.image_set = image_set
         self.rebuild = rebuild
         self.multithread = multithread
-        self.data_aug = data_aug
-        self.RGB = RGB
+        self.random_noise = random_noise
         self.load_classes()
         self.cursor = 0
         self.epoch = 1
@@ -106,7 +105,7 @@ class ilsvrc_cls:
         while count < self.batch_size:
             imname = self.gt_labels[self.cursor]['imname']
             images[count, :, :, :] = self.image_read(
-                imname, data_aug=self.data_aug)
+                imname)
             labels[count] = self.gt_labels[self.cursor]['label']
             count += 1
             self.cursor += 1
@@ -303,7 +302,7 @@ class ilsvrc_cls:
             while count < fetch_size:
                 imname = self.gt_labels[cursor]['imname']
                 images[count, :, :, :] = self.image_read(
-                    imname, data_aug=self.data_aug)
+                    imname)
                 labels[count] = self.gt_labels[cursor]['label']
                 count += 1
                 cursor += 1
@@ -317,101 +316,57 @@ class ilsvrc_cls:
 
             q_out.put([images, labels])
 
-    def image_read(self, imname, data_aug=False):
-        image = cv2.imread(imname)
-        if self.RGB:
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    def add_4_side_contrast(self, x):
+        """This is deprecated, please use add_4_side_contrast_mtr."""
+        x_with_contrast = np.zeros([299, 299, 3])
+        for r in range(299):
+            for c in range(299):
+                for i in range(3):
+                    x_with_contrast[r,c,i] = x[r,c,i]
+                    if r != 0:
+                        x_with_contrast[r,c, 3+i] = abs(x[r,c,i] - x[r-1,c,i])
+                    if r != 299 - 1:
+                        x_with_contrast[r,c, 3*2+i] = abs(x[r,c,i] - x[r+1,c,i])
+                    if c != 0:
+                        x_with_contrast[r,c, 3*3+i] = abs(x[r,c,i] - x[r,c-1,i])
+                    if c != 299 - 1:
+                        x_with_contrast[r,c, 3*4+i] = abs(x[r,c,i] - x[r,c+1,i])
+        return x_with_contrast
 
-        #####################
-        # Data Augmentation #
-        #####################
-        if data_aug:
-            flip = bool(random.getrandbits(1))
-            rotate_deg = random.randint(0, 359)
-            # 75% chance to do random crop
-            # another 25% change in maintaining input at self.image_size
-            # this help simplify the input processing for test, val
-            # TODO: can make multiscale test input later
-            random_crop_chance = random.randint(0, 3)
-            too_small = False
-            color_pert = bool(random.getrandbits(1))
-            exposure_shift = bool(random.getrandbits(1))
+    def add_4_side_contrast_mtr(self, x):
+        """Add the contrast of the 4 sides of each pixel value for each rgb channel.
+        Thus, for each rgb channel, 4 new channels is created s.t. for pixle (r,c):
+            1) absolute difference between (r,c) and (r-1,c)
+            2) absolute difference between (r,c) and (r+1,c)
+            3) absolute difference between (r,c) and (r,c-1)
+            4) absolute difference between (r,c) and (r,c+1)
+        """
+        x_with_contrast = np.zeros([299, 299, 3])
+        x_with_contrast[:,:,0:3] = x
+        x_with_contrast[1:,:,3:6] = np.abs(x[1:,:,:] - x[:-1,:,:])
+        x_with_contrast[:-1,:,6:9] = np.abs(x[:-1,:,:] - x[1:,:,:])
+        x_with_contrast[:,1:,9:12] = np.abs(x[:,1:,:] - x[:,:-1,:])
+        x_with_contrast[:,:-1,12:] = np.abs(x[:,:-1,:] - x[:,1:,:])
+        return x_with_contrast
 
-            if flip:
-                image = image[:, ::-1, :]
-            # assume color image
-            rows, cols, _ = image.shape
-            M = cv2.getRotationMatrix2D((cols / 2, rows / 2), rotate_deg, 1)
-            image = cv2.warpAffine(image, M, (cols, rows))
-
-            # color perturbation
-            if color_pert:
-                hue_shift_sign = bool(random.getrandbits(1))
-                hue_shift = random.randint(0, 10)
-                saturation_shift_sign = bool(random.getrandbits(1))
-                saturation_shift = random.randint(0, 10)
-                hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-                # TODO: currently not sure what cv2 does to values
-                # that are larger than the maximum.
-                # It seems it does not cut at the max
-                # nor normalize the whole by multiplying a factor.
-                # need to expore this in more detail
-                if hue_shift_sign:
-                    hsv[:, :, 0] += hue_shift
-                else:
-                    hsv[:, :, 0] -= hue_shift
-                if saturation_shift_sign:
-                    hsv[:, :, 1] += saturation_shift
-                else:
-                    hsv[:, :, 1] -= saturation_shift
-                image = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
-
-            if exposure_shift:
-                brighter = bool(random.getrandbits(1))
-                if brighter:
-                    gamma = random.uniform(1, 2)
-                else:
-                    gamma = random.uniform(0.5, 1)
-                image = ((image / 255.0) ** (1.0 / gamma)) * 255
-
-            # random crop
-            if random_crop_chance > 0:
-                # current random crop upbound is (1.3 x self.image_size)
-                short_side_len = random.randint(
-                    self.image_size, cfg.RAND_CROP_UPBOUND)
-                short_side = min([cols, rows])
-                if short_side == cols:
-                    scaled_cols = short_side_len
-                    factor = float(short_side_len) / cols
-                    scaled_rows = int(rows * factor)
-                else:
-                    scaled_rows = short_side_len
-                    factor = float(short_side_len) / rows
-                    scaled_cols = int(cols * factor)
-                # print "scaled_cols and rows:", scaled_cols, scaled_rows
-                if scaled_cols < self.image_size or scaled_rows < self.image_size:
-                    too_small = True
-                    print "Image is too small,", imname
-                else:
-                    image = cv2.resize(image, (scaled_cols, scaled_rows))
-                    col_offset = random.randint(
-                        0, scaled_cols - self.image_size)
-                    row_offset = random.randint(
-                        0, scaled_rows - self.image_size)
-                    # print "col_offset and row_offset:", col_offset, row_offset
-                    image = image[row_offset:self.image_size + row_offset,
-                                  col_offset:self.image_size + col_offset]
-                # print "image shape is", image.shape
-
-            if random_crop_chance == 0 or too_small:
-                image = cv2.resize(image, (self.image_size, self.image_size))
-
-        else:
-            image = cv2.resize(image, (self.image_size, self.image_size))
-
-        image = image.astype(np.float32)
+    def image_read(self, imname):
+        image = misc.imread(imname, mode='RGB').astype(np.float)
+        r,c,ch = image.shape
+        if r < 299 or c < 299:
+            # TODO: check too small images
+            # print "##too small!!"
+            image = misc.imresize(image, (299, 299, 3))
+        elif r > 299 or c > 299:
+            image = image[(r-299)/2 : (r-299)/2 + 299, (c-299)/2 : (c-299)/2 + 299, :]
+        # print r, c, image.shape
+        assert image.shape == (299, 299, 3)
         image = (image / 255.0) * 2.0 - 1.0
-
+        if self.random_noise:
+            add_noise = bool(random.getrandbits(1))
+            if add_noise:
+                eps = random.choice([4.0, 8.0, 12.0, 16.0]) / 255.0 * 2.0
+                noise_image = image + eps * np.random.choice([-1, 1], (299,299,3))
+                image = np.clip(noise_image, -1.0, 1.0)
         return image
 
 
@@ -445,3 +400,4 @@ def save_ilsvrcid_to_synset_map(meta_file):
     pickle_file = os.path.join(os.path.dirname(__file__), 'ilsid2syn_map.pickle')
     with open(pickle_file, 'wb') as f:
         pickle.dump(D, f)
+
