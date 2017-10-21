@@ -1,6 +1,6 @@
 # README
 
-**Coming Next: better trained darknet19 model, and easier to use detection tool, (better explanation for dataset folder placement for training), Documentation for **
+**Coming Next: better trained darknet19 model, and easier to use detection tool, (better explanation for dataset folder placement for training), Documentation for nips2017 adversarial defence challenge techniques**
 
 ## Scripts
 Open terminal in the home directory of the project. Then you can:
