@@ -371,7 +371,7 @@ class ilsvrc_cls:
 
 
 def save_synset_to_ilsvrcid_map(meta_file):
-    """Create a mape from synset to ilsvrcid and save it as a pickle file.
+    """Create a map from synset to ilsvrcid and save it as a pickle file.
     """
 
     from scipy.io import loadmat
@@ -387,7 +387,7 @@ def save_synset_to_ilsvrcid_map(meta_file):
 
 
 def save_ilsvrcid_to_synset_map(meta_file):
-    """Create a mape from ilsvrcid to synset and save it as a pickle file.
+    """Create a map from ilsvrcid to synset and save it as a pickle file.
     """
 
     from scipy.io import loadmat
