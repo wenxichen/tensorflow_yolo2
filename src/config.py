@@ -21,6 +21,7 @@ TENSORBOARD_PATH = os.path.join(ROOT_DIR, 'tensorboard')
 
 # weights pathes, customize if needed
 darknet_pascal_weight_path = os.path.join(WEIGHTS_PATH, "darknet19_pascal.ckpt")
+darknet_imagenet_weight_path = os.path.join(WEIGHTS_PATH, "darkent19_imagenet.ckpt")
 
 
 ##########

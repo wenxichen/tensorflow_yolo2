@@ -14,7 +14,7 @@ sys.path.append(FILE_DIR + '/../')
 import config as cfg
 from img_dataset.pascal_voc import pascal_voc
 from utils.timer import Timer
-from yolo2_nets.net_utils import get_loss
+from yolo2_nets.net_utils import get_loss, restore_darknet19_variables
 from yolo2_nets.darknet import darknet19_core, darknet19_detection
 
 slim = tf.contrib.slim
@@ -59,26 +59,28 @@ tfconfig.gpu_options.allow_growth = True
 sess = tf.Session(config=tfconfig)
 
 #####################################################################################
-# loading from imagenet trained model
-LOAD_CKPTS_DIR = cfg.get_ckpts_dir('darknet19', 'ilsvrc_2017_cls')
-# graph_vars = [n.name for n in tf.get_default_graph().as_graph_def().node]
-ckpt_vars = [t[0] for t in tf.contrib.framework.list_variables(LOAD_CKPTS_DIR)]
-vars_to_restore = []
-vars_to_init = []
-for v in tf.global_variables():
-    if v.name[:-2] in ckpt_vars:
-        vars_to_restore.append(v)
-    else:
-        vars_to_init.append(v)
-print 'vars_to_restore:', len(vars_to_restore)
-print 'vars_to_init:', len(vars_to_init)
+# # loading from imagenet trained model
+# LOAD_CKPTS_DIR = cfg.get_ckpts_dir('darknet19', 'ilsvrc_2017_cls')
+# # graph_vars = [n.name for n in tf.get_default_graph().as_graph_def().node]
+# ckpt_vars = [t[0] for t in tf.contrib.framework.list_variables(LOAD_CKPTS_DIR)]
+# vars_to_restore = []
+# vars_to_init = []
+# for v in tf.global_variables():
+#     if v.name[:-2] in ckpt_vars:
+#         vars_to_restore.append(v)
+#     else:
+#         vars_to_init.append(v)
+# print 'vars_to_restore:', len(vars_to_restore)
+# print 'vars_to_init:', len(vars_to_init)
 
-init_op = tf.variables_initializer(vars_to_init)
-saver = tf.train.Saver(vars_to_restore)
+# init_op = tf.variables_initializer(vars_to_init)
+# saver = tf.train.Saver(vars_to_restore)
 
-print 'Initializing new variables to train from imagenet trained model'
-sess.run(init_op)
-saver.restore(sess, os.path.join(LOAD_CKPTS_DIR, 'train_epoch_98.ckpt'))
+# print 'Initializing new variables to train from imagenet trained model'
+# sess.run(init_op)
+# saver.restore(sess, os.path.join(LOAD_CKPTS_DIR, 'train_epoch_98.ckpt'))
+
+last_iter_num = restore_darknet19_variables(sess, imdb, net_name='darknet19', save_epoch=False)
 ####################################################################################
 
 cur_saver = tf.train.Saver()
@@ -88,7 +90,6 @@ merged = tf.summary.merge_all()
 tb_dir, _ = cfg.get_output_tb_dir('darknet19', imdb.name, val=False)
 train_writer = tf.summary.FileWriter(tb_dir, sess.graph)
 
-last_iter_num = 0
 TOTAL_ITER = ADD_ITER + last_iter_num
 T = Timer()
 T.tic()

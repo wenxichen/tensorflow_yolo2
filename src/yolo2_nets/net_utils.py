@@ -38,14 +38,69 @@ def get_ordered_ckpts(sess, imdb, net_name, save_epoch=True):
     # nfiles = glob.glob(nfiles)
     # nfiles.sort(key=os.path.getmtime)
 
+def get_ordered_ckpts_by_dbname(sess, imdb_name, net_name, save_epoch=True):
+    """Get the ckpts for particular network on certain dataset (by name).
+    The ckpts is ordered in ascending order of time.
 
-def restore_darknet19_variables(sess, imdb, net_name, save_epoch=True):
+    Returns: sorted list of ckpt names.
+    """
+
+    # Find previous snapshots if there is any to restore from
+    ckpts_dir = cfg.get_ckpts_dir(net_name, imdb_name)
+    if save_epoch:
+        save_interval = 'epoch'
+    else:
+        save_interval = 'iter'
+    sfiles = os.path.join(ckpts_dir,
+                          cfg.TRAIN_SNAPSHOT_PREFIX + '_' + save_interval + '_*.ckpt.meta')
+    sfiles = glob.glob(sfiles)
+    sfiles.sort(key=os.path.getmtime)
+    # Get the snapshot name in TensorFlow
+    sfiles = [ss.replace('.meta', '') for ss in sfiles]
+
+    return sfiles
+
+
+def restore_darknet19_variables(sess, imdb, net_name='darknet19', save_epoch=True):
     """Initialize or restore the varialbes in darknet19."""
 
     sfiles = get_ordered_ckpts(sess, imdb, net_name, save_epoch=save_epoch)
     lsf = len(sfiles)
-    # TODO: add case when lsf is 0
-    if lsf > 0:
+
+    if lsf == 0:
+        # TODO: this is not used because the current weight has deprecated scope names. Need to fix this
+        # if os.path.isfile(cfg.darknet_imagenet_weight_path + ".meta"):
+        #     # Try to load from weight file first
+        #     print 'Restorining model from weight file {:s}'.format(cfg.darknet_imagenet_weight_path)
+        #     saver = tf.train.Saver()
+        #     saver.restore(sess, cfg.darknet_pascal_weight_path)
+        #     print 'Restored.'
+
+        # loading from imagenet trained model
+        # currently assume trined previously on imagenet
+        LOAD_CKPTS_DIR = cfg.get_ckpts_dir('darknet19', 'ilsvrc_2017_cls')
+        ckpt_vars = [t[0] for t in tf.contrib.framework.list_variables(LOAD_CKPTS_DIR)]
+        vars_to_restore = []
+        vars_to_init = []
+        for v in tf.global_variables():
+            if v.name[:-2] in ckpt_vars:
+                vars_to_restore.append(v)
+            else:
+                vars_to_init.append(v)
+        # print 'vars_to_restore:', len(vars_to_restore)
+        # print 'vars_to_init:', len(vars_to_init)
+
+        init_op = tf.variables_initializer(vars_to_init)
+        saver = tf.train.Saver(vars_to_restore)
+
+        print 'Initializing new variables to train from imagenet trained model'
+        sess.run(init_op)
+        imagnet_sfiles = get_ordered_ckpts_by_dbname(sess, 'ilsvrc_2017_cls', net_name, save_epoch=True)
+        print 'Restorining model snapshots from {:s}'.format(imagnet_sfiles[-1])
+        saver.restore(sess, str(imagnet_sfiles[-1]))
+        return 0
+
+    else:
         print 'Restorining model snapshots from {:s}'.format(sfiles[-1])
         saver = tf.train.Saver()
         saver.restore(sess, str(sfiles[-1]))

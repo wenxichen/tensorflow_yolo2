@@ -57,7 +57,7 @@ if os.path.isfile(cfg.darknet_pascal_weight_path + ".meta"):
     saver.restore(sess, cfg.darknet_pascal_weight_path)
     print 'Restored.'
 else:
-    _ = restore_darknet19_variables(sess, imdb, 'darknet19', save_epoch=False)
+    _ = restore_darknet19_variables(sess, imdb, net_name='darknet19', save_epoch=False)
 
 predicts = sess.run(grid_net, {input_data: image})
 show_yolo_detection(image_path, predicts, imdb)
