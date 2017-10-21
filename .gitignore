@@ -6,4 +6,6 @@ tensorboard/*
 weights/*.ckpt*
 ckpts/*
 data/VOCdevkit
+data/ILSVRC
+data/TF_flowers
 experiments*
